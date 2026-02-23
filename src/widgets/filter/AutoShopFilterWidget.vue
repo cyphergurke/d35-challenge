@@ -4,6 +4,19 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import {
+  loadExternalScriptsOnce,
+  parseScriptUrls,
+  waitForCustomElementDefinition
+} from '@/widgets/filter/utils/shopScriptLoader'
+import {
+  buildShopQueryFromFilterState,
+  mergeQueryParams
+} from '@/widgets/filter/utils/queryBuilder'
+import {
+  applyShopWrapperAttributes,
+  DEFAULT_SHOP_WRAPPER_CONFIG
+} from '@/widgets/filter/utils/wrapperAttributes'
 import { useFilterState } from '@/widgets/filter/composables/useFilterState'
 import AppliedFiltersChips from './components/AppliedFiltersChips.vue'
 import MultiSelectFilter from './components/MultiSelectFilter.vue'
@@ -12,7 +25,8 @@ import RangeSelectPair from './components/RangeSelectPair.vue'
 import SelectFilter from './components/SelectFilter.vue'
 import ExtrasDialog from './components/ExtrasDialog.vue'
 import GuidedSearchDialog from './components/GuidedSearchDialog.vue'
-import { mountHostChild, type HostChildMountResult } from '@/utils/hostSlot'
+import type { FiltersAppliedDetail } from '@/widgets/filter/types/events'
+import type { AutoShopFilterWidgetProps } from '@/widgets/filter/types/wrapper'
 import type {
   FilterState,
   MultiFilterDefinition,
@@ -20,10 +34,13 @@ import type {
   SingleFilterDefinition
 } from '@/widgets/filter/types/filters'
 
-const props = defineProps<{
-  hostElement?: HTMLElement | null
-  resultsChildSelector?: string
-}>()
+const DEFAULT_SHOP_WRAPPER_SCRIPT =
+  'https://s3-eu-central-1.ionoscloud.com/static-webshop/881d1f9e-ce12-43ce-9a64-e9fe1caf1ff7/widgets/production/wrapper.js'
+const WIDGET_MOUNT_CLASS_NAME = 'digital35-meinfahrzeugshop-suche-root'
+const RESULTS_LOADING_TIMEOUT_MS = 10000
+const RESULTS_LOADING_MIN_VISIBLE_MS = 400
+
+const props = defineProps<AutoShopFilterWidgetProps>()
 
 const filter = useFilterState()
 const state = filter.state
@@ -183,12 +200,20 @@ const isExtrasDialogOpen = ref(false)
 const isGuidedSearchOpen = ref(false)
 const aiSearchQuery = ref('')
 const resultsHostRef = ref<HTMLDivElement | null>(null)
-const hasExternalResults = ref(false)
+const resultsWrapperRef = ref<HTMLElement | null>(null)
+const isResultsLoading = ref(true)
+const resultsError = ref<string | null>(null)
 const resultsPage = ref(1)
 const resultsRefreshToken = ref(0)
+const hostChildBaseQueryParams = ref<string | null>(null)
 
-let hostSlotMount: HostChildMountResult | null = null
-let resultsObserver: MutationObserver | null = null
+let isUnmounted = false
+let hostChildRestoreParent: Node | null = null
+let hostChildRestoreNextSibling: Node | null = null
+let resultsRenderObserver: MutationObserver | null = null
+let resultsLoadingTimeoutId: number | null = null
+let resultsLoadingMinDelayId: number | null = null
+let resultsLoadingStartedAt = 0
 
 const extrasSummary = computed(() => {
   if (!state.doors && !state.seats && state.extras.length === 0) {
@@ -204,70 +229,195 @@ const resultsMetaText = computed(
   () => `Page ${resultsPage.value} | refresh #${resultsRefreshToken.value}`
 )
 const isAiSearchDisabled = computed(() => aiSearchQuery.value.trim().length === 0)
+const externalScriptUrls = computed(() => {
+  const parsedUrls = parseScriptUrls(props.scriptUrls)
+  return parsedUrls.length > 0 ? parsedUrls : [DEFAULT_SHOP_WRAPPER_SCRIPT]
+})
 
-interface FiltersAppliedDetail {
-  query: string
-  page: number
-  refreshToken: number
-  state: FilterState
-}
+const filterQueryParams = computed(() => {
+  const dynamicQueryParams = buildShopQueryFromFilterState(state)
+  const baseQueryParams =
+    props.queryParams ??
+    hostChildBaseQueryParams.value ??
+    DEFAULT_SHOP_WRAPPER_CONFIG.queryParams
 
-function appendMultiParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: string[]
-): void {
-  if (value.length === 0) {
-    return
+  return mergeQueryParams(baseQueryParams, dynamicQueryParams)
+})
+
+function clearResultsLoadingWatchers(): void {
+  if (resultsRenderObserver) {
+    resultsRenderObserver.disconnect()
+    resultsRenderObserver = null
   }
 
-  searchParams.set(key, value.join(','))
-}
-
-function appendSingleParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: string | undefined
-): void {
-  if (!value) {
-    return
+  if (resultsLoadingTimeoutId !== null) {
+    window.clearTimeout(resultsLoadingTimeoutId)
+    resultsLoadingTimeoutId = null
   }
 
-  searchParams.set(key, value)
+  if (resultsLoadingMinDelayId !== null) {
+    window.clearTimeout(resultsLoadingMinDelayId)
+    resultsLoadingMinDelayId = null
+  }
 }
 
-function buildQueryFromState(nextState: FilterState): string {
-  const searchParams = new URLSearchParams()
-
-  appendSingleParam(searchParams, 'category', nextState.category)
-  appendSingleParam(searchParams, 'location', nextState.location)
-  appendSingleParam(searchParams, 'radius', nextState.radius)
-  appendMultiParam(searchParams, 'marke', nextState.marke)
-  appendMultiParam(searchParams, 'model', nextState.model)
-  appendMultiParam(searchParams, 'bodyType', nextState.bodyType)
-  appendMultiParam(searchParams, 'fuel', nextState.fuel)
-  appendMultiParam(searchParams, 'financing', nextState.financing)
-  appendSingleParam(searchParams, 'transmission', nextState.transmission)
-  appendSingleParam(searchParams, 'condition', nextState.condition)
-  appendSingleParam(searchParams, 'yearFrom', nextState.yearFrom)
-  appendSingleParam(searchParams, 'yearTo', nextState.yearTo)
-  appendSingleParam(searchParams, 'kilometerFrom', nextState.kilometerFrom)
-  appendSingleParam(searchParams, 'kilometerTo', nextState.kilometerTo)
-  appendSingleParam(searchParams, 'powerFrom', nextState.powerFrom)
-  appendSingleParam(searchParams, 'powerTo', nextState.powerTo)
-  appendSingleParam(
-    searchParams,
-    'displacementFrom',
-    nextState.displacementFrom
+function hasWrapperRenderedContent(wrapperElement: HTMLElement): boolean {
+  return (
+    wrapperElement.querySelector('#webshop-widget') !== null ||
+    wrapperElement.childElementCount > 0
   )
-  appendSingleParam(searchParams, 'displacementTo', nextState.displacementTo)
-  appendSingleParam(searchParams, 'minPrice', nextState.minPrice)
-  appendSingleParam(searchParams, 'maxPrice', nextState.maxPrice)
-  appendSingleParam(searchParams, 'doors', nextState.doors)
-  appendSingleParam(searchParams, 'seats', nextState.seats)
-  appendMultiParam(searchParams, 'extras', nextState.extras)
+}
 
-  return searchParams.toString()
+function finishResultsLoading(): void {
+  if (isUnmounted) {
+    return
+  }
+
+  if (resultsRenderObserver) {
+    resultsRenderObserver.disconnect()
+    resultsRenderObserver = null
+  }
+
+  if (resultsLoadingTimeoutId !== null) {
+    window.clearTimeout(resultsLoadingTimeoutId)
+    resultsLoadingTimeoutId = null
+  }
+
+  if (resultsLoadingMinDelayId !== null) {
+    window.clearTimeout(resultsLoadingMinDelayId)
+    resultsLoadingMinDelayId = null
+  }
+
+  const elapsed = Date.now() - resultsLoadingStartedAt
+  const remaining = Math.max(0, RESULTS_LOADING_MIN_VISIBLE_MS - elapsed)
+
+  if (remaining === 0) {
+    isResultsLoading.value = false
+    return
+  }
+
+  resultsLoadingMinDelayId = window.setTimeout(() => {
+    resultsLoadingMinDelayId = null
+    if (!isUnmounted) {
+      isResultsLoading.value = false
+    }
+  }, remaining)
+}
+
+function beginResultsLoading(wrapperElement: HTMLElement | null): void {
+  clearResultsLoadingWatchers()
+  resultsLoadingStartedAt = Date.now()
+  isResultsLoading.value = true
+
+  if (!wrapperElement) {
+    return
+  }
+
+  if (hasWrapperRenderedContent(wrapperElement)) {
+    finishResultsLoading()
+    return
+  }
+
+  resultsRenderObserver = new MutationObserver(() => {
+    if (!resultsWrapperRef.value) {
+      return
+    }
+
+    if (hasWrapperRenderedContent(resultsWrapperRef.value)) {
+      finishResultsLoading()
+    }
+  })
+
+  resultsRenderObserver.observe(wrapperElement, { childList: true, subtree: true })
+  resultsLoadingTimeoutId = window.setTimeout(() => {
+    finishResultsLoading()
+  }, RESULTS_LOADING_TIMEOUT_MS)
+}
+
+function findHostProvidedResultsChild(): HTMLElement | null {
+  const hostElement = props.hostElement
+  if (!hostElement) {
+    return null
+  }
+
+  const hostChildren = Array.from(hostElement.children).filter(
+    (child): child is HTMLElement =>
+      child instanceof HTMLElement &&
+      !child.classList.contains(WIDGET_MOUNT_CLASS_NAME)
+  )
+
+  return hostChildren[0] ?? null
+}
+
+function captureHostChildRestorePoint(element: HTMLElement): void {
+  if (hostChildRestoreParent) {
+    return
+  }
+
+  hostChildRestoreParent = element.parentNode
+  hostChildRestoreNextSibling = element.nextSibling
+
+  if (props.queryParams === undefined && hostChildBaseQueryParams.value === null) {
+    hostChildBaseQueryParams.value = element.getAttribute('query-params') ?? ''
+  }
+}
+
+function mountResultsWrapperElement(queryParams: string, forceRemount = false): void {
+  const targetElement = resultsHostRef.value
+  if (!targetElement) {
+    return
+  }
+
+  if (!forceRemount) {
+    const hostChild = findHostProvidedResultsChild()
+    if (hostChild) {
+      captureHostChildRestorePoint(hostChild)
+      applyShopWrapperAttributes(hostChild, queryParams, props)
+      targetElement.replaceChildren(hostChild)
+      resultsWrapperRef.value = hostChild
+      return
+    }
+  }
+
+  if (!resultsWrapperRef.value || forceRemount) {
+    const wrapperElement =
+      forceRemount && resultsWrapperRef.value
+        ? (resultsWrapperRef.value.cloneNode(false) as HTMLElement)
+        : document.createElement('custom-elements-wrapper')
+
+    applyShopWrapperAttributes(wrapperElement, queryParams, props)
+    targetElement.replaceChildren(wrapperElement)
+    resultsWrapperRef.value = wrapperElement
+    return
+  }
+
+  applyShopWrapperAttributes(resultsWrapperRef.value, queryParams, props)
+}
+
+function getResultsWrapperElement(): HTMLElement | null {
+  if (resultsWrapperRef.value) {
+    return resultsWrapperRef.value
+  }
+
+  const targetElement = resultsHostRef.value
+  const firstChild = targetElement?.firstElementChild
+  return firstChild instanceof HTMLElement ? firstChild : null
+}
+
+function syncQueryParamsToResults(queryParams: string): void {
+  const resultsWrapperElement = getResultsWrapperElement()
+  if (!resultsWrapperElement) {
+    return
+  }
+
+  const currentQueryParams = resultsWrapperElement.getAttribute('query-params') ?? ''
+  if (currentQueryParams === queryParams) {
+    return
+  }
+
+  resetPaginationAndRefresh()
+  mountResultsWrapperElement(queryParams, true)
+  beginResultsLoading(resultsWrapperRef.value)
 }
 
 function resetPaginationAndRefresh(): void {
@@ -280,7 +430,7 @@ function applyGuidedSearch(nextState: FilterState): void {
   resetPaginationAndRefresh()
 
   const detail: FiltersAppliedDetail = {
-    query: buildQueryFromState(nextState),
+    query: buildShopQueryFromFilterState(nextState),
     page: resultsPage.value,
     refreshToken: resultsRefreshToken.value,
     state: createSnapshot()
@@ -308,32 +458,57 @@ function runAiSearch(): void {
 }
 
 onMounted(() => {
-  const targetElement = resultsHostRef.value
-  if (!targetElement) {
-    return
-  }
+  beginResultsLoading(null)
+  resultsError.value = null
 
-  hostSlotMount = mountHostChild({
-    hostElement: props.hostElement,
-    selector: props.resultsChildSelector,
-    targetElement
-  })
+  loadExternalScriptsOnce(externalScriptUrls.value)
+    .then(() => waitForCustomElementDefinition('custom-elements-wrapper'))
+    .then(() => {
+      if (isUnmounted) {
+        return
+      }
 
-  hasExternalResults.value =
-    hostSlotMount.mounted || targetElement.childElementCount > 0
+      mountResultsWrapperElement(filterQueryParams.value)
+      beginResultsLoading(resultsWrapperRef.value)
+    })
+    .catch((error: unknown) => {
+      if (isUnmounted) {
+        return
+      }
 
-  resultsObserver = new MutationObserver(() => {
-    hasExternalResults.value = targetElement.childElementCount > 0
-  })
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unbekannter Fehler beim Laden'
+      resultsError.value = errorMessage
+      isResultsLoading.value = false
+      clearResultsLoadingWatchers()
+    })
+})
 
-  resultsObserver.observe(targetElement, { childList: true })
+watch(filterQueryParams, (queryParams) => {
+  syncQueryParamsToResults(queryParams)
 })
 
 onBeforeUnmount(() => {
-  resultsObserver?.disconnect()
-  resultsObserver = null
-  hostSlotMount?.unmount()
-  hostSlotMount = null
+  isUnmounted = true
+  clearResultsLoadingWatchers()
+
+  if (hostChildRestoreParent && resultsWrapperRef.value) {
+    if (
+      hostChildRestoreNextSibling &&
+      hostChildRestoreNextSibling.parentNode === hostChildRestoreParent
+    ) {
+      hostChildRestoreParent.insertBefore(
+        resultsWrapperRef.value,
+        hostChildRestoreNextSibling
+      )
+    } else {
+      hostChildRestoreParent.appendChild(resultsWrapperRef.value)
+    }
+  }
+
+  hostChildRestoreParent = null
+  hostChildRestoreNextSibling = null
+  resultsWrapperRef.value = null
 })
 </script>
 

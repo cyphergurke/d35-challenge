@@ -21,6 +21,16 @@ pnpm build
 pnpm preview
 ```
 
+## Nutzung als WebComponent
+
+```html
+<digital35-meinfahrzeugshop-suche></digital35-meinfahrzeugshop-suche>
+<script type="module" src="/src/widgets/filter/index.ts"></script>
+```
+
+Optional koennen Konfigurations-Attribute direkt am Tag gesetzt werden, z. B.:
+`client-base-url`, `api-base-url`, `cdn-url`, `query-params`, `script-urls`.
+
 ## Dokumentation
 
 - Widget-Entwicklung als Custom HTML Component: `docs/widgets.md`

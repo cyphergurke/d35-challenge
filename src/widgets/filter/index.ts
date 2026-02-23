@@ -16,20 +16,20 @@ const ATTRIBUTE_TO_PROP_MAP = {
   'pages-search-filter-enforced-manufacturer': 'pagesSearchFilterEnforcedManufacturer',
   'search-filter-enforced-vehicle-types': 'searchFilterEnforcedVehicleTypes',
   'enforced-vehicle-request-parameters': 'enforcedVehicleRequestParameters',
-  'script-urls': 'scriptUrls',
-  'results-child-selector': 'resultsChildSelector'
+  'script-urls': 'scriptUrls'
 } as const
 
 const BOOLEAN_ATTRIBUTES = ['is-car-carousel-autoplay'] as const
 
 const adapter = createWidgetAdapter({
   component: AutoShopFilterWidget,
-  defaultTagName: 'auto-shop-filter-widget',
+  defaultTagName: 'digital35-meinfahrzeugshop-suche',
   attributeToPropMap: ATTRIBUTE_TO_PROP_MAP,
   booleanAttributes: BOOLEAN_ATTRIBUTES,
-  mountPointClassName: 'auto-shop-filter-widget-root'
+  mountPointClassName: 'digital35-meinfahrzeugshop-suche-root'
 })
 
+export const DIGITAL35_MEINFAHRZEUGSHOP_SUCHE_TAG = adapter.defaultTagName
 export const AUTO_SHOP_FILTER_WIDGET_TAG = adapter.defaultTagName
 export const mountAutoShopFilterWidget = adapter.mount
 export const unmountAutoShopFilterWidget = adapter.unmount
