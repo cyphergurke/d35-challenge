@@ -60,6 +60,24 @@ export const financingOptions: FilterOption[] = [
   { id: 'financing-ballon', label: 'Ballonfinanzierung', value: 'Ballonfinanzierung' }
 ]
 
+export const locationOptions: FilterOption[] = [
+  { id: 'location-berlin', label: 'Berlin', value: 'Berlin' },
+  { id: 'location-hamburg', label: 'Hamburg', value: 'Hamburg' },
+  { id: 'location-muenchen', label: 'Muenchen', value: 'Muenchen' },
+  { id: 'location-koeln', label: 'Koeln', value: 'Koeln' },
+  { id: 'location-frankfurt', label: 'Frankfurt am Main', value: 'Frankfurt am Main' },
+  { id: 'location-stuttgart', label: 'Stuttgart', value: 'Stuttgart' }
+]
+
+export const radiusOptions: FilterOption[] = [
+  { id: 'radius-10', label: '10 km', value: '10' },
+  { id: 'radius-25', label: '25 km', value: '25' },
+  { id: 'radius-50', label: '50 km', value: '50' },
+  { id: 'radius-100', label: '100 km', value: '100' },
+  { id: 'radius-200', label: '200 km', value: '200' },
+  { id: 'radius-300', label: '300 km', value: '300' }
+]
+
 const currentYear = new Date().getFullYear()
 export const yearOptions: FilterOption[] = Array.from({ length: currentYear - 1979 }, (_, index) => {
   const year = String(currentYear - index)

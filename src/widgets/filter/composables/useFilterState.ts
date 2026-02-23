@@ -20,11 +20,13 @@ import {
   financingOptions,
   fuelOptions,
   kilometerOptions,
+  locationOptions,
   powerOptions,
   displacementOptions,
   markeOptions,
   maxKilometerValue,
   modelOptions,
+  radiusOptions,
   seatOptions,
   transmissionOptions,
   yearOptions
@@ -33,6 +35,8 @@ import { isAllowedPriceKey, isValidNumericPaste, sanitizeNumericInput } from '@/
 
 const INITIAL_FILTER_STATE: FilterState = {
   category: 'PKW',
+  location: undefined,
+  radius: undefined,
   marke: ['Audi', 'BMW'],
   model: ['3 Series', 'A1'],
   bodyType: ['SUV'],
@@ -82,6 +86,30 @@ const FILTER_DEFINITIONS: readonly FilterDefinition[] = [
     placeholder: 'Finanzierung suchen',
     emptyText: 'Keine passende Finanzierungsart.',
     options: financingOptions
+  },
+  {
+    id: 'location',
+    label: 'Standort',
+    uiGroup: 'budget',
+    order: 30,
+    type: 'single',
+    stateKey: 'location',
+    appliedKind: 'location',
+    appliedLabel: 'Standort',
+    placeholder: 'Standort waehlen',
+    options: locationOptions
+  },
+  {
+    id: 'radius',
+    label: 'Radius',
+    uiGroup: 'budget',
+    order: 40,
+    type: 'single',
+    stateKey: 'radius',
+    appliedKind: 'radius',
+    appliedLabel: 'Radius',
+    placeholder: 'Radius waehlen',
+    options: radiusOptions
   },
   {
     id: 'category',
@@ -275,6 +303,18 @@ function createFilterState(): FilterState {
   }
 }
 
+function cloneFilterState(source: FilterState): FilterState {
+  return {
+    ...source,
+    marke: [...source.marke],
+    model: [...source.model],
+    bodyType: [...source.bodyType],
+    fuel: [...source.fuel],
+    financing: [...source.financing],
+    extras: [...source.extras]
+  }
+}
+
 function isMultiFilterDefinition(definition: FilterDefinition): definition is MultiFilterDefinition {
   return definition.type === 'multi'
 }
@@ -296,6 +336,7 @@ export interface UseFilterStateResult {
   state: FilterState
   appliedFilters: ComputedRef<AppliedFilter[]>
   budgetDefinition: ComputedRef<PriceFilterDefinition | undefined>
+  budgetSingleDefinitions: ComputedRef<SingleFilterDefinition[]>
   budgetMultiDefinitions: ComputedRef<MultiFilterDefinition[]>
   vehicleSingleDefinitions: ComputedRef<SingleFilterDefinition[]>
   vehicleMultiDefinitions: ComputedRef<MultiFilterDefinition[]>
@@ -312,6 +353,13 @@ export interface UseFilterStateResult {
   displacementToOptions: ComputedRef<FilterOption[]>
   isKilometerToDisabled: ComputedRef<boolean>
   filteredExtraOptions: ComputedRef<FilterOption[]>
+  createSnapshot: () => FilterState
+  applySnapshot: (nextState: FilterState) => void
+  getYearToOptionsFor: (yearFrom: string | undefined) => FilterOption[]
+  getKilometerToOptionsFor: (kilometerFrom: string | undefined) => FilterOption[]
+  getPowerToOptionsFor: (powerFrom: string | undefined) => FilterOption[]
+  getDisplacementToOptionsFor: (displacementFrom: string | undefined) => FilterOption[]
+  isKilometerToDisabledFor: (kilometerFrom: string | undefined) => boolean
   getMultiValue: (stateKey: MultiFilterStateKey) => string[]
   setMultiValue: (stateKey: MultiFilterStateKey, value: string[]) => void
   removeMultiValue: (stateKey: MultiFilterStateKey, value: string) => void
@@ -338,6 +386,14 @@ export function useFilterState(): UseFilterStateResult {
     FILTER_DEFINITIONS.find(
       (definition): definition is PriceFilterDefinition =>
         definition.type === 'price' && definition.id === 'budget'
+    )
+  )
+
+  const budgetSingleDefinitions = computed<SingleFilterDefinition[]>(() =>
+    sortByReadonlyOrder(
+      FILTER_DEFINITIONS.filter(isSingleFilterDefinition).filter(
+        (definition) => definition.uiGroup === 'budget'
+      )
     )
   )
 
@@ -388,47 +444,61 @@ export function useFilterState(): UseFilterStateResult {
     )
   )
 
-  const yearToOptions = computed<FilterOption[]>(() => {
-    if (!state.yearFrom) {
+  function getYearToOptionsFor(yearFrom: string | undefined): FilterOption[] {
+    if (!yearFrom) {
       return yearOptions
     }
 
-    const yearFromNumber = Number(state.yearFrom)
+    const yearFromNumber = Number(yearFrom)
     return yearOptions.filter((option) => Number(option.value) >= yearFromNumber)
-  })
+  }
 
-  const kilometerToOptions = computed<FilterOption[]>(() => {
-    if (!state.kilometerFrom) {
+  function getKilometerToOptionsFor(kilometerFrom: string | undefined): FilterOption[] {
+    if (!kilometerFrom) {
       return kilometerOptions
     }
 
-    if (state.kilometerFrom === maxKilometerValue) {
+    if (kilometerFrom === maxKilometerValue) {
       return []
     }
 
-    const kilometerFromNumber = Number(state.kilometerFrom)
+    const kilometerFromNumber = Number(kilometerFrom)
     return kilometerOptions.filter((option) => Number(option.value) >= kilometerFromNumber)
-  })
+  }
 
-  const isKilometerToDisabled = computed(() => kilometerToOptions.value.length === 0)
-
-  const powerToOptions = computed<FilterOption[]>(() => {
-    if (!state.powerFrom) {
+  function getPowerToOptionsFor(powerFrom: string | undefined): FilterOption[] {
+    if (!powerFrom) {
       return powerOptions
     }
 
-    const powerFromNumber = Number(state.powerFrom)
+    const powerFromNumber = Number(powerFrom)
     return powerOptions.filter((option) => Number(option.value) >= powerFromNumber)
-  })
+  }
 
-  const displacementToOptions = computed<FilterOption[]>(() => {
-    if (!state.displacementFrom) {
+  function getDisplacementToOptionsFor(displacementFrom: string | undefined): FilterOption[] {
+    if (!displacementFrom) {
       return displacementOptions
     }
 
-    const displacementFromNumber = Number(state.displacementFrom)
+    const displacementFromNumber = Number(displacementFrom)
     return displacementOptions.filter((option) => Number(option.value) >= displacementFromNumber)
-  })
+  }
+
+  function isKilometerToDisabledFor(kilometerFrom: string | undefined): boolean {
+    return getKilometerToOptionsFor(kilometerFrom).length === 0
+  }
+
+  const yearToOptions = computed<FilterOption[]>(() => getYearToOptionsFor(state.yearFrom))
+
+  const kilometerToOptions = computed<FilterOption[]>(() => getKilometerToOptionsFor(state.kilometerFrom))
+
+  const isKilometerToDisabled = computed(() => isKilometerToDisabledFor(state.kilometerFrom))
+
+  const powerToOptions = computed<FilterOption[]>(() => getPowerToOptionsFor(state.powerFrom))
+
+  const displacementToOptions = computed<FilterOption[]>(() =>
+    getDisplacementToOptionsFor(state.displacementFrom)
+  )
 
   const filteredExtraOptions = computed<FilterOption[]>(() => {
     const normalizedSearch = state.extrasSearch.trim().toLowerCase()
@@ -545,6 +615,38 @@ export function useFilterState(): UseFilterStateResult {
 
   function setSingleValue(stateKey: SingleFilterStateKey, value: string | undefined): void {
     state[stateKey] = value
+  }
+
+  function createSnapshot(): FilterState {
+    return cloneFilterState(state)
+  }
+
+  function applySnapshot(nextState: FilterState): void {
+    const snapshot = cloneFilterState(nextState)
+    state.category = snapshot.category
+    state.location = snapshot.location
+    state.radius = snapshot.radius
+    state.marke = snapshot.marke
+    state.model = snapshot.model
+    state.bodyType = snapshot.bodyType
+    state.fuel = snapshot.fuel
+    state.financing = snapshot.financing
+    state.transmission = snapshot.transmission
+    state.condition = snapshot.condition
+    state.yearFrom = snapshot.yearFrom
+    state.yearTo = snapshot.yearTo
+    state.kilometerFrom = snapshot.kilometerFrom
+    state.kilometerTo = snapshot.kilometerTo
+    state.powerFrom = snapshot.powerFrom
+    state.powerTo = snapshot.powerTo
+    state.displacementFrom = snapshot.displacementFrom
+    state.displacementTo = snapshot.displacementTo
+    state.minPrice = snapshot.minPrice
+    state.maxPrice = snapshot.maxPrice
+    state.doors = snapshot.doors
+    state.seats = snapshot.seats
+    state.extras = snapshot.extras
+    state.extrasSearch = snapshot.extrasSearch
   }
 
   function clearDefinition(definitionId: FilterDefinition['id']): void {
@@ -709,6 +811,7 @@ export function useFilterState(): UseFilterStateResult {
     state,
     appliedFilters,
     budgetDefinition,
+    budgetSingleDefinitions,
     budgetMultiDefinitions,
     vehicleSingleDefinitions,
     vehicleMultiDefinitions,
@@ -725,6 +828,13 @@ export function useFilterState(): UseFilterStateResult {
     displacementToOptions,
     isKilometerToDisabled,
     filteredExtraOptions,
+    createSnapshot,
+    applySnapshot,
+    getYearToOptionsFor,
+    getKilometerToOptionsFor,
+    getPowerToOptionsFor,
+    getDisplacementToOptionsFor,
+    isKilometerToDisabledFor,
     getMultiValue,
     setMultiValue,
     removeMultiValue,
