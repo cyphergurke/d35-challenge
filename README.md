@@ -20,3 +20,7 @@ pnpm build
 ```bash
 pnpm preview
 ```
+
+## Dokumentation
+
+- Widget-Entwicklung als Custom HTML Component: `docs/widgets.md`

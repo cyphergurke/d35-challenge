@@ -1,0 +1,9 @@
+services:
+  widget-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: d35-widget-app
+    ports:
+      - "5177:5173"
+    restart: unless-stopped

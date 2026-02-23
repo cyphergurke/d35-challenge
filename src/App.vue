@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AutoShopFilterWidget from './widget/AutoShopFilterWidget.vue'
+import AutoShopFilterWidget from './widgets/filter/AutoShopFilterWidget.vue'
 </script>
 
 <template>
