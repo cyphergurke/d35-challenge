@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
 
     <CardContent class="p-4 pt-0">
       <div
-        class="mx-auto grid w-full max-w-[1320px] gap-4 lg:grid-cols-[370px_minmax(0,1fr)] lg:items-start"
+        class="mx-auto grid w-full max-w-[1320px] gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start"
       >
         <Card class="w-full border-[#c8d2de] bg-[#f7f9fc] shadow-none">
           <CardHeader class="p-4">
@@ -554,7 +554,7 @@ onBeforeUnmount(() => {
           </CardContent>
         </Card>
 
-        <div class="space-y-4">
+        <div class="min-w-0 space-y-4">
           <Card class="w-full border-[#c8d2de] bg-[#f7f9fc] shadow-none">
             <CardContent class="p-4">
               <AppliedFiltersChips
@@ -572,12 +572,28 @@ onBeforeUnmount(() => {
               >
             </CardHeader>
             <CardContent class="p-4 pt-0">
-              <div ref="resultsHostRef" class="min-h-[320px] w-full"></div>
+              <div class="relative min-h-[320px] w-full">
+                <div ref="resultsHostRef" class="min-h-[320px] w-full"></div>
+                <div
+                  v-if="isResultsLoading"
+                  class="pointer-events-none absolute inset-0 z-[2147483647] flex items-center justify-center bg-[#f7f9fc]/78"
+                >
+                  <div
+                    class="flex items-center gap-2 rounded-md border border-[#d6dfeb] bg-white px-3 py-2 text-xs text-[#5f6f87]"
+                  >
+                    <Loader2 class="size-4 animate-spin text-[#5f6f87]" />
+                    <span>Laedt Ergebnisse...</span>
+                  </div>
+                </div>
+                <p
+                  v-else-if="resultsError"
+                  class="absolute left-2 top-2 text-xs text-[#d04949]"
+                >
+                  Fehler: {{ resultsError }}
+                </p>
+              </div>
               <p class="mt-2 text-[11px] text-[#90a0b7]">
                 {{ resultsMetaText }}
-              </p>
-              <p v-if="!hasExternalResults" class="text-xs text-[#90a0b7]">
-                Kein externes Ergebnis-Element gefunden.
               </p>
             </CardContent>
           </Card>

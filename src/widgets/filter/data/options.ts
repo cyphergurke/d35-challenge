@@ -25,11 +25,19 @@ export const categoryOptions: FilterOption[] = [
 ]
 
 export const bodyTypeOptions: FilterOption[] = [
-  { id: 'body-suv', label: 'SUV', value: 'SUV' },
+  { id: 'body-kleinwagen', label: 'Kleinwagen', value: 'Kleinwagen' },
+  { id: 'body-suv', label: 'SUV', value: 'suv' },
   { id: 'body-limousine', label: 'Limousine', value: 'Limousine' },
   { id: 'body-kombi', label: 'Kombi', value: 'Kombi' },
+  { id: 'body-van', label: 'Van', value: 'Van' },
+  { id: 'body-sportwagen', label: 'Sportwagen', value: 'Sportwagen' },
   { id: 'body-coupe', label: 'Coupe', value: 'Coupe' },
-  { id: 'body-cabrio', label: 'Cabrio', value: 'Cabrio' }
+  { id: 'body-cabrio', label: 'Cabrio', value: 'Cabrio' },
+  {
+    id: 'body-gelaendewagen-pickup',
+    label: 'Gelaendewagen/Pickup',
+    value: 'Gelaendewagen/Pickup'
+  }
 ]
 
 export const fuelOptions: FilterOption[] = [

@@ -9,7 +9,8 @@ export default defineConfig({
       template: {
         compilerOptions: {
           isCustomElement: (tag) =>
-            tag === 'custom-elements-wrapper' || tag === 'auto-shop-filter-widget'
+            tag === 'custom-elements-wrapper' ||
+            tag === 'digital35-meinfahrzeugshop-suche'
         }
       }
     })

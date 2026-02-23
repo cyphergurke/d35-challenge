@@ -34,13 +34,13 @@ import {
 import { isAllowedPriceKey, isValidNumericPaste, sanitizeNumericInput } from '@/widgets/filter/utils/helpers'
 
 const INITIAL_FILTER_STATE: FilterState = {
-  category: 'PKW',
+  category: '',
   location: undefined,
   radius: undefined,
-  marke: ['Audi', 'BMW'],
-  model: ['3 Series', 'A1'],
-  bodyType: ['SUV'],
-  fuel: ['Benzin'],
+  marke: [],
+  model: [],
+  bodyType: [],
+  fuel: [],
   financing: [],
   transmission: undefined,
   condition: undefined,
