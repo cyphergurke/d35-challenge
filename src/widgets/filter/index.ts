@@ -17,10 +17,12 @@ const ATTRIBUTE_TO_PROP_MAP = {
   'pages-search-filter-enforced-manufacturer': 'pagesSearchFilterEnforcedManufacturer',
   'search-filter-enforced-vehicle-types': 'searchFilterEnforcedVehicleTypes',
   'enforced-vehicle-request-parameters': 'enforcedVehicleRequestParameters',
-  'script-urls': 'scriptUrls'
+  'script-urls': 'scriptUrls',
+  'results-child-selector': 'resultsChildSelector'
 } as const
 
-const BOOLEAN_ATTRIBUTES = new Set(['is-car-carousel-autoplay'])
+const BOOLEAN_ATTRIBUTES = new Set<keyof typeof ATTRIBUTE_TO_PROP_MAP>(['is-car-carousel-autoplay'])
+const OBSERVED_ATTRIBUTES = Object.keys(ATTRIBUTE_TO_PROP_MAP)
 
 type AttributeName = keyof typeof ATTRIBUTE_TO_PROP_MAP
 type PropName = (typeof ATTRIBUTE_TO_PROP_MAP)[AttributeName]
@@ -29,25 +31,47 @@ type RootComponentProps = WidgetProps & { hostElement?: HTMLElement | null }
 
 export const AUTO_SHOP_FILTER_WIDGET_TAG = 'auto-shop-filter-widget'
 
-let widgetApp: VueApp<Element> | null = null
+let mountedWidgetApp: VueApp<Element> | null = null
 
-function readPropsFromHostAttributes(host: HTMLElement): WidgetProps {
+function isKnownAttribute(name: string): name is AttributeName {
+  return name in ATTRIBUTE_TO_PROP_MAP
+}
+
+function toPropValue(attributeName: AttributeName, value: string): string | boolean {
+  if (BOOLEAN_ATTRIBUTES.has(attributeName)) {
+    return value !== 'false'
+  }
+
+  return value
+}
+
+function readHostAttributes(host: HTMLElement): WidgetProps {
   const props: WidgetProps = {}
 
-  for (const [attributeName, propName] of Object.entries(ATTRIBUTE_TO_PROP_MAP) as Array<
-    [AttributeName, PropName]
-  >) {
+  for (const attributeName of OBSERVED_ATTRIBUTES) {
     if (!host.hasAttribute(attributeName)) {
       continue
     }
 
+    const typedAttribute = attributeName as AttributeName
+    const propName = ATTRIBUTE_TO_PROP_MAP[typedAttribute]
     const attributeValue = host.getAttribute(attributeName) ?? ''
-    props[propName] = BOOLEAN_ATTRIBUTES.has(attributeName)
-      ? attributeValue !== 'false'
-      : attributeValue
+
+    props[propName] = toPropValue(typedAttribute, attributeValue)
   }
 
   return props
+}
+
+function createRootProps(host: HTMLElement): RootComponentProps {
+  return {
+    ...readHostAttributes(host),
+    hostElement: host
+  }
+}
+
+function createWidgetApp(hostForProps: HTMLElement): VueApp<Element> {
+  return createApp(AutoShopFilterWidget, createRootProps(hostForProps))
 }
 
 export function mountAutoShopFilterWidget(options: WidgetMountOptions): void {
@@ -58,27 +82,26 @@ export function mountAutoShopFilterWidget(options: WidgetMountOptions): void {
   }
 
   unmountAutoShopFilterWidget()
-  const props: RootComponentProps = { ...readPropsFromHostAttributes(host), hostElement: host }
-  widgetApp = createApp(AutoShopFilterWidget, props)
-  widgetApp.mount(host)
+
+  mountedWidgetApp = createWidgetApp(host)
+  mountedWidgetApp.mount(host)
 }
 
 export function unmountAutoShopFilterWidget(): void {
-  if (!widgetApp) {
+  if (!mountedWidgetApp) {
     return
   }
 
-  widgetApp.unmount()
-  widgetApp = null
+  mountedWidgetApp.unmount()
+  mountedWidgetApp = null
 }
 
 class AutoShopFilterWidgetElement extends HTMLElement {
   private app: VueApp<Element> | null = null
-
   private mountPoint: HTMLDivElement | null = null
 
   static get observedAttributes(): string[] {
-    return Object.keys(ATTRIBUTE_TO_PROP_MAP)
+    return OBSERVED_ATTRIBUTES
   }
 
   connectedCallback(): void {
@@ -90,8 +113,7 @@ class AutoShopFilterWidgetElement extends HTMLElement {
     this.mountPoint.className = 'auto-shop-filter-widget-root'
     this.appendChild(this.mountPoint)
 
-    const props: RootComponentProps = { ...readPropsFromHostAttributes(this), hostElement: this }
-    this.app = createApp(AutoShopFilterWidget, props)
+    this.app = createWidgetApp(this)
     this.app.mount(this.mountPoint)
   }
 
@@ -100,11 +122,7 @@ class AutoShopFilterWidgetElement extends HTMLElement {
   }
 
   attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
-    if (oldValue === newValue || !ATTRIBUTE_TO_PROP_MAP[name as AttributeName]) {
-      return
-    }
-
-    if (!this.isConnected || !this.app) {
+    if (oldValue === newValue || !isKnownAttribute(name) || !this.isConnected || !this.app) {
       return
     }
 
@@ -120,16 +138,12 @@ class AutoShopFilterWidgetElement extends HTMLElement {
     this.app.unmount()
     this.app = null
 
-    if (this.mountPoint) {
-      this.mountPoint.remove()
-      this.mountPoint = null
-    }
+    this.mountPoint?.remove()
+    this.mountPoint = null
   }
 }
 
-export function registerAutoShopFilterWidgetElement(
-  tagName = AUTO_SHOP_FILTER_WIDGET_TAG
-): void {
+export function registerAutoShopFilterWidgetElement(tagName = AUTO_SHOP_FILTER_WIDGET_TAG): void {
   if (customElements.get(tagName)) {
     return
   }
