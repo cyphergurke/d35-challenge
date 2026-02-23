@@ -14,6 +14,10 @@ export default defineConfig({
       }
     })
   ],
+  server: {
+    host: true,
+    cors: true
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
