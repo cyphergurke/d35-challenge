@@ -16,7 +16,8 @@ export default defineConfig({
   ],
   server: {
     host: true,
-    cors: true
+    cors: true,
+    allowedHosts: ['d35-challenge.cypherweb.dev']
   },
   resolve: {
     alias: {
