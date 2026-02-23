@@ -1,10 +1,12 @@
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, watch, type ComputedRef } from 'vue'
 import type {
   AppliedFilter,
   FilterDefinition,
+  FilterOption,
   FilterState,
   MultiFilterDefinition,
   MultiFilterStateKey,
+  PriceFilterDefinition,
   RangeFilterDefinition,
   SingleFilterDefinition,
   SingleFilterStateKey
@@ -18,6 +20,8 @@ import {
   financingOptions,
   fuelOptions,
   kilometerOptions,
+  powerOptions,
+  displacementOptions,
   markeOptions,
   maxKilometerValue,
   modelOptions,
@@ -40,6 +44,10 @@ const INITIAL_FILTER_STATE: FilterState = {
   yearTo: undefined,
   kilometerFrom: undefined,
   kilometerTo: undefined,
+  powerFrom: undefined,
+  powerTo: undefined,
+  displacementFrom: undefined,
+  displacementTo: undefined,
   minPrice: '',
   maxPrice: '',
   doors: undefined,
@@ -48,7 +56,7 @@ const INITIAL_FILTER_STATE: FilterState = {
   extrasSearch: ''
 }
 
-const FILTER_DEFINITIONS: FilterDefinition[] = [
+const FILTER_DEFINITIONS: readonly FilterDefinition[] = [
   {
     id: 'budget',
     label: 'Budget',
@@ -178,6 +186,32 @@ const FILTER_DEFINITIONS: FilterDefinition[] = [
     toLabel: 'Kilometer bis'
   },
   {
+    id: 'power',
+    label: 'Leistung',
+    uiGroup: 'vehicle',
+    order: 85,
+    type: 'range',
+    fromKey: 'powerFrom',
+    toKey: 'powerTo',
+    fromKind: 'powerFrom',
+    toKind: 'powerTo',
+    fromLabel: 'Leistung von',
+    toLabel: 'Leistung bis'
+  },
+  {
+    id: 'displacement',
+    label: 'Hubraum',
+    uiGroup: 'vehicle',
+    order: 88,
+    type: 'range',
+    fromKey: 'displacementFrom',
+    toKey: 'displacementTo',
+    fromKind: 'displacementFrom',
+    toKind: 'displacementTo',
+    fromLabel: 'Hubraum von',
+    toLabel: 'Hubraum bis'
+  },
+  {
     id: 'condition',
     label: 'Fahrzeugzustand',
     uiGroup: 'vehicle',
@@ -253,20 +287,62 @@ function isRangeFilterDefinition(definition: FilterDefinition): definition is Ra
   return definition.type === 'range'
 }
 
-function sortByOrder<T extends { order: number }>(definitions: T[]): T[] {
+function sortByReadonlyOrder<T extends { order: number }>(definitions: readonly T[]): T[] {
   return [...definitions].sort((a, b) => a.order - b.order)
 }
 
-export function useFilterState() {
-  const state = reactive<FilterState>(createFilterState())
-  const definitionById = new Map(FILTER_DEFINITIONS.map((definition) => [definition.id, definition] as const))
+export interface UseFilterStateResult {
+  definitions: readonly FilterDefinition[]
+  state: FilterState
+  appliedFilters: ComputedRef<AppliedFilter[]>
+  budgetDefinition: ComputedRef<PriceFilterDefinition | undefined>
+  budgetMultiDefinitions: ComputedRef<MultiFilterDefinition[]>
+  vehicleSingleDefinitions: ComputedRef<SingleFilterDefinition[]>
+  vehicleMultiDefinitions: ComputedRef<MultiFilterDefinition[]>
+  vehicleRangeDefinitions: ComputedRef<RangeFilterDefinition[]>
+  extrasSingleDefinitions: ComputedRef<SingleFilterDefinition[]>
+  extrasDefinition: ComputedRef<MultiFilterDefinition | undefined>
+  yearOptions: FilterOption[]
+  kilometerOptions: FilterOption[]
+  powerOptions: FilterOption[]
+  displacementOptions: FilterOption[]
+  yearToOptions: ComputedRef<FilterOption[]>
+  kilometerToOptions: ComputedRef<FilterOption[]>
+  powerToOptions: ComputedRef<FilterOption[]>
+  displacementToOptions: ComputedRef<FilterOption[]>
+  isKilometerToDisabled: ComputedRef<boolean>
+  filteredExtraOptions: ComputedRef<FilterOption[]>
+  getMultiValue: (stateKey: MultiFilterStateKey) => string[]
+  setMultiValue: (stateKey: MultiFilterStateKey, value: string[]) => void
+  removeMultiValue: (stateKey: MultiFilterStateKey, value: string) => void
+  clearMultiValue: (stateKey: MultiFilterStateKey) => void
+  getSingleValue: (stateKey: SingleFilterStateKey) => string | undefined
+  setSingleValue: (stateKey: SingleFilterStateKey, value: string | undefined) => void
+  clearDefinition: (definitionId: FilterDefinition['id']) => void
+  clearAllFilters: () => void
+  removeAppliedFilter: (filter: AppliedFilter) => void
+  toggleExtra: (extra: string) => void
+  setMinPrice: (value: string | number) => void
+  setMaxPrice: (value: string | number) => void
+  handlePriceKeydown: (event: KeyboardEvent) => void
+  handlePricePaste: (event: ClipboardEvent) => void
+}
 
-  const budgetDefinition = computed(() =>
-    FILTER_DEFINITIONS.find((definition) => definition.type === 'price' && definition.id === 'budget')
+export function useFilterState(): UseFilterStateResult {
+  const state = reactive<FilterState>(createFilterState())
+  const definitionById = new Map<FilterDefinition['id'], FilterDefinition>(
+    FILTER_DEFINITIONS.map((definition) => [definition.id, definition])
+  )
+
+  const budgetDefinition = computed<PriceFilterDefinition | undefined>(() =>
+    FILTER_DEFINITIONS.find(
+      (definition): definition is PriceFilterDefinition =>
+        definition.type === 'price' && definition.id === 'budget'
+    )
   )
 
   const budgetMultiDefinitions = computed<MultiFilterDefinition[]>(() =>
-    sortByOrder(
+    sortByReadonlyOrder(
       FILTER_DEFINITIONS.filter(isMultiFilterDefinition).filter(
         (definition) => definition.uiGroup === 'budget'
       )
@@ -274,7 +350,7 @@ export function useFilterState() {
   )
 
   const vehicleSingleDefinitions = computed<SingleFilterDefinition[]>(() =>
-    sortByOrder(
+    sortByReadonlyOrder(
       FILTER_DEFINITIONS.filter(isSingleFilterDefinition).filter(
         (definition) => definition.uiGroup === 'vehicle'
       )
@@ -282,7 +358,7 @@ export function useFilterState() {
   )
 
   const vehicleMultiDefinitions = computed<MultiFilterDefinition[]>(() =>
-    sortByOrder(
+    sortByReadonlyOrder(
       FILTER_DEFINITIONS.filter(isMultiFilterDefinition).filter(
         (definition) => definition.uiGroup === 'vehicle'
       )
@@ -290,7 +366,7 @@ export function useFilterState() {
   )
 
   const vehicleRangeDefinitions = computed<RangeFilterDefinition[]>(() =>
-    sortByOrder(
+    sortByReadonlyOrder(
       FILTER_DEFINITIONS.filter(isRangeFilterDefinition).filter(
         (definition) => definition.uiGroup === 'vehicle'
       )
@@ -298,7 +374,7 @@ export function useFilterState() {
   )
 
   const extrasSingleDefinitions = computed<SingleFilterDefinition[]>(() =>
-    sortByOrder(
+    sortByReadonlyOrder(
       FILTER_DEFINITIONS.filter(isSingleFilterDefinition).filter(
         (definition) => definition.uiGroup === 'extras'
       )
@@ -312,7 +388,7 @@ export function useFilterState() {
     )
   )
 
-  const yearToOptions = computed(() => {
+  const yearToOptions = computed<FilterOption[]>(() => {
     if (!state.yearFrom) {
       return yearOptions
     }
@@ -321,7 +397,7 @@ export function useFilterState() {
     return yearOptions.filter((option) => Number(option.value) >= yearFromNumber)
   })
 
-  const kilometerToOptions = computed(() => {
+  const kilometerToOptions = computed<FilterOption[]>(() => {
     if (!state.kilometerFrom) {
       return kilometerOptions
     }
@@ -336,7 +412,25 @@ export function useFilterState() {
 
   const isKilometerToDisabled = computed(() => kilometerToOptions.value.length === 0)
 
-  const filteredExtraOptions = computed(() => {
+  const powerToOptions = computed<FilterOption[]>(() => {
+    if (!state.powerFrom) {
+      return powerOptions
+    }
+
+    const powerFromNumber = Number(state.powerFrom)
+    return powerOptions.filter((option) => Number(option.value) >= powerFromNumber)
+  })
+
+  const displacementToOptions = computed<FilterOption[]>(() => {
+    if (!state.displacementFrom) {
+      return displacementOptions
+    }
+
+    const displacementFromNumber = Number(state.displacementFrom)
+    return displacementOptions.filter((option) => Number(option.value) >= displacementFromNumber)
+  })
+
+  const filteredExtraOptions = computed<FilterOption[]>(() => {
     const normalizedSearch = state.extrasSearch.trim().toLowerCase()
     if (!normalizedSearch) {
       return extraOptions
@@ -584,6 +678,32 @@ export function useFilterState() {
     }
   )
 
+  watch(
+    () => state.powerFrom,
+    (nextFrom) => {
+      if (!nextFrom || !state.powerTo) {
+        return
+      }
+
+      if (Number(state.powerTo) < Number(nextFrom)) {
+        state.powerTo = undefined
+      }
+    }
+  )
+
+  watch(
+    () => state.displacementFrom,
+    (nextFrom) => {
+      if (!nextFrom || !state.displacementTo) {
+        return
+      }
+
+      if (Number(state.displacementTo) < Number(nextFrom)) {
+        state.displacementTo = undefined
+      }
+    }
+  )
+
   return {
     definitions: FILTER_DEFINITIONS,
     state,
@@ -597,8 +717,12 @@ export function useFilterState() {
     extrasDefinition,
     yearOptions,
     kilometerOptions,
+    powerOptions,
+    displacementOptions,
     yearToOptions,
     kilometerToOptions,
+    powerToOptions,
+    displacementToOptions,
     isKilometerToDisabled,
     filteredExtraOptions,
     getMultiValue,

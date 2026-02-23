@@ -11,15 +11,21 @@ import RangeSelectPair from './components/RangeSelectPair.vue'
 import SelectFilter from './components/SelectFilter.vue'
 import ExtrasDialog from './components/ExtrasDialog.vue'
 import { mountHostChild, type HostChildMountResult } from '@/utils/hostSlot'
-import type { MultiFilterDefinition, RangeFilterDefinition, SingleFilterDefinition } from '@/widgets/filter/types/filters'
+import type {
+  MultiFilterDefinition,
+  RangeFilterDefinition,
+  SingleFilterDefinition
+} from '@/widgets/filter/types/filters'
 
 const props = defineProps<{
   hostElement?: HTMLElement | null
   resultsChildSelector?: string
 }>()
 
+const filter = useFilterState()
+const state = filter.state
+
 const {
-  state,
   appliedFilters,
   budgetDefinition,
   budgetMultiDefinitions,
@@ -30,8 +36,12 @@ const {
   extrasDefinition,
   yearOptions,
   kilometerOptions,
+  powerOptions,
+  displacementOptions,
   yearToOptions,
   kilometerToOptions,
+  powerToOptions,
+  displacementToOptions,
   isKilometerToDisabled,
   filteredExtraOptions,
   getMultiValue,
@@ -45,7 +55,7 @@ const {
   setMaxPrice,
   handlePriceKeydown,
   handlePricePaste
-} = useFilterState()
+} = filter
 
 function requireSingleDefinition(
   definitions: SingleFilterDefinition[],
@@ -88,6 +98,8 @@ const transmissionDefinition = requireSingleDefinition(vehicleSingleDefinitions.
 const conditionDefinition = requireSingleDefinition(vehicleSingleDefinitions.value, 'condition')
 const yearDefinition = requireRangeDefinition(vehicleRangeDefinitions.value, 'year')
 const kilometerDefinition = requireRangeDefinition(vehicleRangeDefinitions.value, 'kilometer')
+const powerDefinition = requireRangeDefinition(vehicleRangeDefinitions.value, 'power')
+const displacementDefinition = requireRangeDefinition(vehicleRangeDefinitions.value, 'displacement')
 const doorsDefinition = requireSingleDefinition(extrasSingleDefinitions.value, 'doors')
 const seatsDefinition = requireSingleDefinition(extrasSingleDefinitions.value, 'seats')
 const extrasMultiDefinition = requireMultiDefinition(
@@ -263,6 +275,30 @@ onBeforeUnmount(() => {
                     @update:from-value="(value) => (state.kilometerFrom = value)"
                     @update:to-value="(value) => (state.kilometerTo = value)"
                     @clear="clearDefinition(kilometerDefinition.id)"
+                  />
+
+                  <Separator class="bg-[#d6dfeb]" />
+                  <RangeSelectPair
+                    :label="powerDefinition.label"
+                    :from-value="state.powerFrom"
+                    :to-value="state.powerTo"
+                    :from-options="powerOptions"
+                    :to-options="powerToOptions"
+                    @update:from-value="(value) => (state.powerFrom = value)"
+                    @update:to-value="(value) => (state.powerTo = value)"
+                    @clear="clearDefinition(powerDefinition.id)"
+                  />
+
+                  <Separator class="bg-[#d6dfeb]" />
+                  <RangeSelectPair
+                    :label="displacementDefinition.label"
+                    :from-value="state.displacementFrom"
+                    :to-value="state.displacementTo"
+                    :from-options="displacementOptions"
+                    :to-options="displacementToOptions"
+                    @update:from-value="(value) => (state.displacementFrom = value)"
+                    @update:to-value="(value) => (state.displacementTo = value)"
+                    @clear="clearDefinition(displacementDefinition.id)"
                   />
 
                   <Separator class="bg-[#d6dfeb]" />

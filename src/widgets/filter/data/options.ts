@@ -82,6 +82,40 @@ export const kilometerOptions: FilterOption[] = [
   '250000'
 ].map((value) => ({ id: `kilometer-${value}`, label: value, value }))
 
+export const powerOptions: FilterOption[] = [
+  '50',
+  '75',
+  '90',
+  '100',
+  '120',
+  '150',
+  '180',
+  '200',
+  '250',
+  '300',
+  '350',
+  '400',
+  '500',
+  '600'
+].map((value) => ({ id: `power-${value}`, label: `${value} PS`, value }))
+
+export const displacementOptions: FilterOption[] = [
+  '500',
+  '750',
+  '1000',
+  '1200',
+  '1400',
+  '1600',
+  '1800',
+  '2000',
+  '2500',
+  '3000',
+  '3500',
+  '4000',
+  '5000',
+  '6000'
+].map((value) => ({ id: `displacement-${value}`, label: `${value} ccm`, value }))
+
 export const seatOptions: FilterOption[] = [
   { id: 'seats-2', label: '2 Sitze', value: '2' },
   { id: 'seats-4', label: '4 Sitze', value: '4' },

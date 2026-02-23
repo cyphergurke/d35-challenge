@@ -5,22 +5,26 @@ export interface FilterOption {
 }
 
 export interface FilterValueMap {
-  category?: string
+  category: string | undefined
   marke: string[]
   model: string[]
   bodyType: string[]
   fuel: string[]
   financing: string[]
-  transmission?: string
-  condition?: string
-  yearFrom?: string
-  yearTo?: string
-  kilometerFrom?: string
-  kilometerTo?: string
+  transmission: string | undefined
+  condition: string | undefined
+  yearFrom: string | undefined
+  yearTo: string | undefined
+  kilometerFrom: string | undefined
+  kilometerTo: string | undefined
+  powerFrom: string | undefined
+  powerTo: string | undefined
+  displacementFrom: string | undefined
+  displacementTo: string | undefined
   minPrice: string
   maxPrice: string
-  doors?: string
-  seats?: string
+  doors: string | undefined
+  seats: string | undefined
   extras: string[]
   extrasSearch: string
 }
@@ -29,24 +33,32 @@ export type FilterState = FilterValueMap
 
 export type MultiFilterStateKey = 'marke' | 'model' | 'bodyType' | 'fuel' | 'financing' | 'extras'
 export type SingleFilterStateKey = 'category' | 'transmission' | 'condition' | 'doors' | 'seats'
-export type RangeFromStateKey = 'yearFrom' | 'kilometerFrom'
-export type RangeToStateKey = 'yearTo' | 'kilometerTo'
+export type RangeFromStateKey = 'yearFrom' | 'kilometerFrom' | 'powerFrom' | 'displacementFrom'
+export type RangeToStateKey = 'yearTo' | 'kilometerTo' | 'powerTo' | 'displacementTo'
 
-export type FilterDefinitionId =
-  | 'category'
-  | 'marke'
-  | 'model'
-  | 'bodyType'
-  | 'fuel'
-  | 'financing'
-  | 'transmission'
-  | 'condition'
-  | 'year'
-  | 'kilometer'
-  | 'budget'
-  | 'doors'
-  | 'seats'
-  | 'extras'
+export const FILTER_DEFINITION_IDS = [
+  'category',
+  'marke',
+  'model',
+  'bodyType',
+  'fuel',
+  'financing',
+  'transmission',
+  'condition',
+  'year',
+  'kilometer',
+  'power',
+  'displacement',
+  'budget',
+  'doors',
+  'seats',
+  'extras'
+] as const
+
+export type FilterDefinitionId = (typeof FILTER_DEFINITION_IDS)[number]
+
+export const RANGE_FILTER_DEFINITION_IDS = ['year', 'kilometer', 'power', 'displacement'] as const
+export type RangeFilterDefinitionId = (typeof RANGE_FILTER_DEFINITION_IDS)[number]
 
 export type AppliedFilterKind =
   | 'category'
@@ -64,6 +76,10 @@ export type AppliedFilterKind =
   | 'yearTo'
   | 'kilometerFrom'
   | 'kilometerTo'
+  | 'powerFrom'
+  | 'powerTo'
+  | 'displacementFrom'
+  | 'displacementTo'
   | 'priceMin'
   | 'priceMax'
 
@@ -105,11 +121,12 @@ export interface SingleFilterDefinition extends BaseFilterDefinition {
 }
 
 export interface RangeFilterDefinition extends BaseFilterDefinition {
+  id: RangeFilterDefinitionId
   type: 'range'
   fromKey: RangeFromStateKey
   toKey: RangeToStateKey
-  fromKind: Extract<AppliedFilterKind, 'yearFrom' | 'kilometerFrom'>
-  toKind: Extract<AppliedFilterKind, 'yearTo' | 'kilometerTo'>
+  fromKind: Extract<AppliedFilterKind, 'yearFrom' | 'kilometerFrom' | 'powerFrom' | 'displacementFrom'>
+  toKind: Extract<AppliedFilterKind, 'yearTo' | 'kilometerTo' | 'powerTo' | 'displacementTo'>
   fromLabel: string
   toLabel: string
 }
