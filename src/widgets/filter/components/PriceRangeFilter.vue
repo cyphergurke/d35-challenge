@@ -8,11 +8,15 @@ interface Props {
   maxValue: string
   minPlaceholder?: string
   maxPlaceholder?: string
+  showClear?: boolean
+  titleClass?: string
 }
 
 withDefaults(defineProps<Props>(), {
   minPlaceholder: 'Von €',
-  maxPlaceholder: 'Bis €'
+  maxPlaceholder: 'Bis €',
+  showClear: true,
+  titleClass: 'text-[20px] font-semibold text-[#2a3342]'
 })
 
 const emit = defineEmits<{
@@ -27,7 +31,8 @@ const emit = defineEmits<{
 <template>
   <FilterSection
     :label="label"
-    :can-clear="Boolean(minValue || maxValue)"
+    :title-class="titleClass"
+    :can-clear="showClear && Boolean(minValue || maxValue)"
     @clear="emit('clear')"
   >
     <div class="grid grid-cols-2 gap-2">

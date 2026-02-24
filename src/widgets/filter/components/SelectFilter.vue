@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import type { FilterOption } from '@/widgets/filter/types/filters'
 import FilterSection from '@/widgets/filter/components/FilterSection.vue'
 
@@ -9,10 +15,12 @@ interface Props {
   placeholder: string
   options: FilterOption[]
   modelValue: string | undefined
+  showClear?: boolean
   titleClass?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  showClear: true,
   titleClass: 'text-[20px] font-semibold text-[#2a3342]'
 })
 
@@ -34,7 +42,7 @@ function clearSelected(): void {
   <FilterSection
     :label="label"
     :title-class="titleClass"
-    :can-clear="Boolean(modelValue)"
+    :can-clear="showClear && Boolean(modelValue)"
     @clear="clearSelected"
   >
     <Select v-model="selectedValue">

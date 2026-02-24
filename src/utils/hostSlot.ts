@@ -14,7 +14,10 @@ interface RestorePoint {
   nextSibling: ChildNode | null
 }
 
-function isEligibleCandidate(element: Element | null, targetElement: HTMLElement): element is HTMLElement {
+function isEligibleCandidate(
+  element: Element | null,
+  targetElement: HTMLElement
+): element is HTMLElement {
   return (
     element instanceof HTMLElement &&
     element !== targetElement &&
@@ -42,7 +45,10 @@ function pickHostChild(
   return null
 }
 
-function restoreElement(element: HTMLElement, restorePoint: RestorePoint): void {
+function restoreElement(
+  element: HTMLElement,
+  restorePoint: RestorePoint
+): void {
   const { parent, nextSibling } = restorePoint
 
   if (nextSibling && nextSibling.parentNode === parent) {
@@ -53,7 +59,9 @@ function restoreElement(element: HTMLElement, restorePoint: RestorePoint): void 
   parent.appendChild(element)
 }
 
-export function mountHostChild(params: MountHostChildParams): HostChildMountResult {
+export function mountHostChild(
+  params: MountHostChildParams
+): HostChildMountResult {
   const { hostElement, selector, targetElement } = params
   if (!hostElement) {
     return { mounted: false, unmount: () => undefined }

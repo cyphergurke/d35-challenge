@@ -23,11 +23,13 @@ interface Props {
   options: FilterOption[]
   modelValue: string[]
   showChips?: boolean
+  showClear?: boolean
   titleClass?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showChips: true,
+  showClear: true,
   titleClass: 'text-[20px] font-semibold text-[#2a3342]'
 })
 
@@ -41,7 +43,9 @@ const selectedValues = computed<string[]>({
 })
 
 const optionByValue = computed(() => {
-  const entries = props.options.map((option) => [option.value, option.label] as const)
+  const entries = props.options.map(
+    (option) => [option.value, option.label] as const
+  )
   return new Map<string, string>(entries)
 })
 
@@ -61,7 +65,7 @@ function removeSelected(value: string): void {
   <FilterSection
     :label="label"
     :title-class="titleClass"
-    :can-clear="modelValue.length > 0"
+    :can-clear="showClear && modelValue.length > 0"
     @clear="clearSelected"
   >
     <Combobox
@@ -72,14 +76,15 @@ function removeSelected(value: string): void {
     >
       <ComboboxAnchor class="w-full">
         <div class="relative w-full items-center">
-          <ComboboxInput
-            class="w-full pl-9 pr-9"
-            :placeholder="placeholder"
-          />
-          <span class="pointer-events-none absolute start-0 inset-y-0 flex items-center justify-center px-3">
+          <ComboboxInput class="w-full pl-9 pr-9" :placeholder="placeholder" />
+          <span
+            class="pointer-events-none absolute start-0 inset-y-0 flex items-center justify-center px-3"
+          >
             <Search class="size-4 text-muted-foreground" />
           </span>
-          <ComboboxTrigger class="absolute end-0 inset-y-0 flex items-center justify-center px-3">
+          <ComboboxTrigger
+            class="absolute end-0 inset-y-0 flex items-center justify-center px-3"
+          >
             <ChevronsUpDown class="size-4 text-muted-foreground" />
           </ComboboxTrigger>
         </div>
@@ -102,10 +107,7 @@ function removeSelected(value: string): void {
       </ComboboxList>
     </Combobox>
 
-    <div
-      v-if="showChips && modelValue.length > 0"
-      class="flex flex-wrap gap-2"
-    >
+    <div v-if="showChips && modelValue.length > 0" class="flex flex-wrap gap-2">
       <Badge
         v-for="value in modelValue"
         :key="`${label}-${value}`"

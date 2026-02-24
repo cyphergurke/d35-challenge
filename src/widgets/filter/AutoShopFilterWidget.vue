@@ -1,24 +1,31 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
+import { SlidersHorizontal } from 'lucide-vue-next'
+import { ConfigProvider } from 'reka-ui'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from '@/components/ui/sheet'
+import { useFilterUrlSync } from '@/widgets/filter/composables/useFilterUrlSync'
 import { useFilterState } from '@/widgets/filter/composables/useFilterState'
-import AppliedFiltersChips from './components/AppliedFiltersChips.vue'
-import MultiSelectFilter from './components/MultiSelectFilter.vue'
-import PriceRangeFilter from './components/PriceRangeFilter.vue'
-import RangeSelectPair from './components/RangeSelectPair.vue'
-import SelectFilter from './components/SelectFilter.vue'
+import ResultsPanel from './results/ResultsPanel.vue'
+import FilterAccordionPanel from './components/FilterAccordionPanel.vue'
 import ExtrasDialog from './components/ExtrasDialog.vue'
 import GuidedSearchDialog from './components/GuidedSearchDialog.vue'
-import { mountHostChild, type HostChildMountResult } from '@/utils/hostSlot'
 import type {
   FilterState,
   MultiFilterDefinition,
   RangeFilterDefinition,
   SingleFilterDefinition
 } from '@/widgets/filter/types/filters'
+import type { SortKey } from './results/types'
 
 const props = defineProps<{
   hostElement?: HTMLElement | null
@@ -30,6 +37,7 @@ const state = filter.state
 
 const {
   appliedFilters,
+  rateViewOptions,
   budgetDefinition,
   budgetSingleDefinitions,
   budgetMultiDefinitions,
@@ -47,7 +55,6 @@ const {
   powerToOptions,
   displacementToOptions,
   isKilometerToDisabled,
-  filteredExtraOptions,
   createSnapshot,
   applySnapshot,
   getYearToOptionsFor,
@@ -59,6 +66,9 @@ const {
   setMultiValue,
   getSingleValue,
   setSingleValue,
+  getRangeValue,
+  setRangeValue,
+  setRateView,
   clearDefinition,
   clearAllFilters,
   removeAppliedFilter,
@@ -79,11 +89,17 @@ function requireSingleDefinition(
   id: SingleFilterDefinition['id']
 ): SingleFilterDefinition {
   const definition = definitions.find((item) => item.id === id)
-  if (!definition) {
+  if (definition) {
+    return definition
+  }
+
+  const fallback = definitions[0]
+  if (!fallback) {
     throw new Error(`Missing single filter definition: ${id}`)
   }
 
-  return definition
+  console.warn(`[AutoShopFilterWidget] Missing single filter definition: ${id}`)
+  return fallback
 }
 
 function requireRangeDefinition(
@@ -91,11 +107,17 @@ function requireRangeDefinition(
   id: RangeFilterDefinition['id']
 ): RangeFilterDefinition {
   const definition = definitions.find((item) => item.id === id)
-  if (!definition) {
+  if (definition) {
+    return definition
+  }
+
+  const fallback = definitions[0]
+  if (!fallback) {
     throw new Error(`Missing range filter definition: ${id}`)
   }
 
-  return definition
+  console.warn(`[AutoShopFilterWidget] Missing range filter definition: ${id}`)
+  return fallback
 }
 
 function requireMultiDefinition(
@@ -103,11 +125,17 @@ function requireMultiDefinition(
   id: MultiFilterDefinition['id']
 ): MultiFilterDefinition {
   const definition = definitions.find((item) => item.id === id)
-  if (!definition) {
+  if (definition) {
+    return definition
+  }
+
+  const fallback = definitions[0]
+  if (!fallback) {
     throw new Error(`Missing multi filter definition: ${id}`)
   }
 
-  return definition
+  console.warn(`[AutoShopFilterWidget] Missing multi filter definition: ${id}`)
+  return fallback
 }
 
 const categoryDefinition = requireSingleDefinition(
@@ -181,94 +209,78 @@ const extrasMultiDefinition = requireMultiDefinition(
 
 const isExtrasDialogOpen = ref(false)
 const isGuidedSearchOpen = ref(false)
+const isFilterSheetOpen = ref(false)
+const extrasSearch = ref('')
 const aiSearchQuery = ref('')
-const resultsHostRef = ref<HTMLDivElement | null>(null)
-const hasExternalResults = ref(false)
 const resultsPage = ref(1)
 const resultsRefreshToken = ref(0)
+const resultsSortKey = ref<SortKey>('relevance')
 
-let hostSlotMount: HostChildMountResult | null = null
-let resultsObserver: MutationObserver | null = null
-
-const extrasSummary = computed(() => {
-  if (!state.doors && !state.seats && state.extras.length === 0) {
-    return 'Noch keine Extras ausgewaehlt'
+const filteredExtraOptions = computed(() => {
+  const searchTerm = extrasSearch.value.trim().toLowerCase()
+  if (!searchTerm) {
+    return extrasMultiDefinition.options
   }
 
-  const doorsLabel = state.doors ? `Tueren: ${state.doors}` : 'Tueren: -'
-  const seatsLabel = state.seats ? `Sitze: ${state.seats}` : 'Sitze: -'
-  return `${doorsLabel} | ${seatsLabel} | ${state.extras.length} Extras gewaehlt`
+  return extrasMultiDefinition.options.filter((option) =>
+    option.label.toLowerCase().includes(searchTerm)
+  )
 })
 
-const resultsMetaText = computed(
-  () => `Page ${resultsPage.value} | refresh #${resultsRefreshToken.value}`
+const isAiSearchDisabled = computed(
+  () => aiSearchQuery.value.trim().length === 0
 )
-const isAiSearchDisabled = computed(() => aiSearchQuery.value.trim().length === 0)
+const activeFilterCount = computed(() => appliedFilters.value.length)
+const filterAccordionPanelProps = computed(() => ({
+  state,
+  rateViewOptions,
+  budgetDefinition: budgetFilterDefinition,
+  categoryDefinition,
+  markeDefinition,
+  modelDefinition,
+  yearDefinition,
+  kilometerDefinition,
+  powerDefinition,
+  displacementDefinition,
+  conditionDefinition,
+  fuelDefinition,
+  transmissionDefinition,
+  yearOptions,
+  kilometerOptions,
+  powerOptions,
+  displacementOptions,
+  yearToOptions: yearToOptions.value,
+  kilometerToOptions: kilometerToOptions.value,
+  powerToOptions: powerToOptions.value,
+  displacementToOptions: displacementToOptions.value,
+  isKilometerToDisabled: isKilometerToDisabled.value,
+  getMultiValue,
+  setMultiValue,
+  getSingleValue,
+  setSingleValue,
+  getRangeValue,
+  setRangeValue,
+  setRateView,
+  clearDefinition,
+  clearAllFilters,
+  setMinPrice,
+  setMaxPrice,
+  handlePriceKeydown,
+  handlePricePaste
+}))
 
-interface FiltersAppliedDetail {
+interface SearchRequestedDetail {
+  source: 'guided-search' | 'results-page' | 'results-sort' | 'saved-search'
   query: string
+  sort: SortKey
   page: number
   refreshToken: number
   state: FilterState
 }
-
-function appendMultiParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: string[]
-): void {
-  if (value.length === 0) {
-    return
-  }
-
-  searchParams.set(key, value.join(','))
-}
-
-function appendSingleParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: string | undefined
-): void {
-  if (!value) {
-    return
-  }
-
-  searchParams.set(key, value)
-}
-
-function buildQueryFromState(nextState: FilterState): string {
-  const searchParams = new URLSearchParams()
-
-  appendSingleParam(searchParams, 'category', nextState.category)
-  appendSingleParam(searchParams, 'location', nextState.location)
-  appendSingleParam(searchParams, 'radius', nextState.radius)
-  appendMultiParam(searchParams, 'marke', nextState.marke)
-  appendMultiParam(searchParams, 'model', nextState.model)
-  appendMultiParam(searchParams, 'bodyType', nextState.bodyType)
-  appendMultiParam(searchParams, 'fuel', nextState.fuel)
-  appendMultiParam(searchParams, 'financing', nextState.financing)
-  appendSingleParam(searchParams, 'transmission', nextState.transmission)
-  appendSingleParam(searchParams, 'condition', nextState.condition)
-  appendSingleParam(searchParams, 'yearFrom', nextState.yearFrom)
-  appendSingleParam(searchParams, 'yearTo', nextState.yearTo)
-  appendSingleParam(searchParams, 'kilometerFrom', nextState.kilometerFrom)
-  appendSingleParam(searchParams, 'kilometerTo', nextState.kilometerTo)
-  appendSingleParam(searchParams, 'powerFrom', nextState.powerFrom)
-  appendSingleParam(searchParams, 'powerTo', nextState.powerTo)
-  appendSingleParam(
-    searchParams,
-    'displacementFrom',
-    nextState.displacementFrom
-  )
-  appendSingleParam(searchParams, 'displacementTo', nextState.displacementTo)
-  appendSingleParam(searchParams, 'minPrice', nextState.minPrice)
-  appendSingleParam(searchParams, 'maxPrice', nextState.maxPrice)
-  appendSingleParam(searchParams, 'doors', nextState.doors)
-  appendSingleParam(searchParams, 'seats', nextState.seats)
-  appendMultiParam(searchParams, 'extras', nextState.extras)
-
-  return searchParams.toString()
-}
+const { buildQueryFromState } = useFilterUrlSync({
+  createSnapshot,
+  applySnapshot
+})
 
 function resetPaginationAndRefresh(): void {
   resultsPage.value = 1
@@ -278,20 +290,7 @@ function resetPaginationAndRefresh(): void {
 function applyGuidedSearch(nextState: FilterState): void {
   applySnapshot(nextState)
   resetPaginationAndRefresh()
-
-  const detail: FiltersAppliedDetail = {
-    query: buildQueryFromState(nextState),
-    page: resultsPage.value,
-    refreshToken: resultsRefreshToken.value,
-    state: createSnapshot()
-  }
-
-  props.hostElement?.dispatchEvent(
-    new CustomEvent<FiltersAppliedDetail>('filters-applied', {
-      detail,
-      bubbles: true
-    })
-  )
+  dispatchSearchRequested('guided-search')
 }
 
 function runAiSearch(): void {
@@ -307,298 +306,166 @@ function runAiSearch(): void {
   )
 }
 
-onMounted(() => {
-  const targetElement = resultsHostRef.value
-  if (!targetElement) {
-    return
+function openExtrasDialog(): void {
+  isFilterSheetOpen.value = false
+  isExtrasDialogOpen.value = true
+}
+
+function dispatchSearchRequested(
+  source: SearchRequestedDetail['source']
+): void {
+  const snapshot = createSnapshot()
+  const detail: SearchRequestedDetail = {
+    source,
+    query: buildQueryFromState(snapshot),
+    sort: resultsSortKey.value,
+    page: resultsPage.value,
+    refreshToken: resultsRefreshToken.value,
+    state: snapshot
   }
 
-  hostSlotMount = mountHostChild({
-    hostElement: props.hostElement,
-    selector: props.resultsChildSelector,
-    targetElement
-  })
+  props.hostElement?.dispatchEvent(
+    new CustomEvent<SearchRequestedDetail>('search-requested', {
+      detail,
+      bubbles: true
+    })
+  )
+}
 
-  hasExternalResults.value =
-    hostSlotMount.mounted || targetElement.childElementCount > 0
+function handleResultsPageChange(page: number): void {
+  resultsPage.value = page
+  dispatchSearchRequested('results-page')
+}
 
-  resultsObserver = new MutationObserver(() => {
-    hasExternalResults.value = targetElement.childElementCount > 0
-  })
+function handleResultsSortChange(sort: SortKey): void {
+  resultsSortKey.value = sort
+  resultsPage.value = 1
+  resultsRefreshToken.value += 1
+  dispatchSearchRequested('results-sort')
+}
 
-  resultsObserver.observe(targetElement, { childList: true })
-})
+function handleResultsFavoriteChange(count: number): void {
+  props.hostElement?.dispatchEvent(
+    new CustomEvent<{ count: number }>('results-favorite-change', {
+      detail: { count },
+      bubbles: true
+    })
+  )
+}
 
-onBeforeUnmount(() => {
-  resultsObserver?.disconnect()
-  resultsObserver = null
-  hostSlotMount?.unmount()
-  hostSlotMount = null
-})
+function handleApplySavedSearch(payload: {
+  filters: FilterState
+  sortKey: SortKey
+}): void {
+  resultsSortKey.value = payload.sortKey
+  applySnapshot(payload.filters)
+  resultsPage.value = 1
+  resultsRefreshToken.value += 1
+  dispatchSearchRequested('saved-search')
+}
 </script>
 
 <template>
   <Card class="border-[#c8d2de] bg-[#f7f9fc] shadow-none">
-    <CardHeader class="flex-row items-center justify-between gap-4 p-4">
-      <div class="flex w-full items-center gap-2">
-        <Input
-          placeholder="Beschreibe dein Traumauto..."
-          class="h-10 w-full bg-white"
-          :model-value="aiSearchQuery"
-          @update:model-value="(value) => (aiSearchQuery = String(value))"
-        />
-        <Button
-          class="h-10 w-fit rounded-xl bg-[#3f82f6] px-5 text-[17px] text-white hover:bg-[#2d72e8] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#3f82f6]"
-          :disabled="isAiSearchDisabled"
-          @click="runAiSearch"
-        >
-          Search
-        </Button>
-      </div>
-      <Button
-        class="h-10 w-fit rounded-xl bg-[#3f82f6] px-5 text-[17px] text-white hover:bg-[#2d72e8]"
-        @click="isGuidedSearchOpen = true"
-      >
-        Start Guided Search
-      </Button>
-    </CardHeader>
-
     <CardContent class="p-4 pt-0">
       <div
         class="mx-auto grid w-full max-w-[1320px] gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start"
       >
-        <Card class="w-full border-[#c8d2de] bg-[#f7f9fc] shadow-none">
-          <CardHeader class="p-4">
-            <CardTitle
-              class="text-[32px] leading-none tracking-[-0.03em] text-[#2a3342]"
-              >Filters</CardTitle
-            >
-          </CardHeader>
+        <div class="hidden lg:block">
+          <FilterAccordionPanel
+            v-bind="filterAccordionPanelProps"
+            @open-extras="openExtrasDialog"
+          />
+        </div>
 
-          <CardContent class="space-y-4 p-4 pt-0">
-            <Card class="border-[#c3cfdd] bg-[#f7f9fc] shadow-none">
-              <CardContent class="space-y-3 p-3">
-                <PriceRangeFilter
-                  :label="budgetFilterDefinition.label"
-                  :min-value="state.minPrice"
-                  :max-value="state.maxPrice"
-                  @update:min-value="setMinPrice"
-                  @update:max-value="setMaxPrice"
-                  @keydown="handlePriceKeydown"
-                  @paste="handlePricePaste"
-                  @clear="clearDefinition('budget')"
-                />
-
-                <template
-                  v-for="definition in budgetSingleDefinitions"
-                  :key="definition.id"
-                >
-                  <Separator class="bg-[#d6dfeb]" />
-                  <SelectFilter
-                    :label="definition.label"
-                    :placeholder="definition.placeholder"
-                    :options="definition.options"
-                    :model-value="getSingleValue(definition.stateKey)"
-                    @update:model-value="
-                      (value) => setSingleValue(definition.stateKey, value)
-                    "
-                  />
-                </template>
-
-                <template
-                  v-for="(definition, index) in budgetMultiDefinitions"
-                  :key="definition.id"
-                >
-                  <Separator v-if="index >= 0" class="bg-[#d6dfeb]" />
-                  <MultiSelectFilter
-                    :label="definition.label"
-                    :placeholder="definition.placeholder"
-                    :empty-text="definition.emptyText"
-                    :options="definition.options"
-                    :model-value="getMultiValue(definition.stateKey)"
-                    :show-chips="definition.showChips ?? true"
-                    @update:model-value="
-                      (value) => setMultiValue(definition.stateKey, value)
-                    "
-                  />
-                </template>
-              </CardContent>
-            </Card>
-
-            <Card class="border-[#c3cfdd] bg-[#f7f9fc] shadow-none">
-              <CardHeader class="p-3 pb-2">
-                <CardTitle
-                  class="text-[26px] leading-none tracking-[-0.02em] text-[#2a3342]"
-                  >Fahrzeugdetails
-                </CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-4 p-3 pt-0">
-                <SelectFilter
-                  :label="categoryDefinition.label"
-                  :placeholder="categoryDefinition.placeholder"
-                  :options="categoryDefinition.options"
-                  :model-value="getSingleValue(categoryDefinition.stateKey)"
-                  @update:model-value="
-                    (value) =>
-                      setSingleValue(categoryDefinition.stateKey, value)
-                  "
-                />
-
-                <template
-                  v-for="definition in vehicleMultiDefinitions"
-                  :key="definition.id"
-                >
-                  <Separator class="bg-[#d6dfeb]" />
-                  <MultiSelectFilter
-                    :label="definition.label"
-                    :placeholder="definition.placeholder"
-                    :empty-text="definition.emptyText"
-                    :options="definition.options"
-                    :model-value="getMultiValue(definition.stateKey)"
-                    :show-chips="definition.showChips ?? true"
-                    @update:model-value="
-                      (value) => setMultiValue(definition.stateKey, value)
-                    "
-                  />
-                </template>
-
-                <Separator class="bg-[#d6dfeb]" />
-                <SelectFilter
-                  :label="transmissionDefinition.label"
-                  :placeholder="transmissionDefinition.placeholder"
-                  :options="transmissionDefinition.options"
-                  :model-value="getSingleValue(transmissionDefinition.stateKey)"
-                  @update:model-value="
-                    (value) =>
-                      setSingleValue(transmissionDefinition.stateKey, value)
-                  "
-                />
-
-                <Separator class="bg-[#d6dfeb]" />
-                <RangeSelectPair
-                  :label="yearDefinition.label"
-                  :from-value="state.yearFrom"
-                  :to-value="state.yearTo"
-                  :from-options="yearOptions"
-                  :to-options="yearToOptions"
-                  @update:from-value="(value) => (state.yearFrom = value)"
-                  @update:to-value="(value) => (state.yearTo = value)"
-                  @clear="clearDefinition(yearDefinition.id)"
-                />
-
-                <Separator class="bg-[#d6dfeb]" />
-                <RangeSelectPair
-                  :label="kilometerDefinition.label"
-                  :from-value="state.kilometerFrom"
-                  :to-value="state.kilometerTo"
-                  :from-options="kilometerOptions"
-                  :to-options="kilometerToOptions"
-                  :to-disabled="isKilometerToDisabled"
-                  @update:from-value="(value) => (state.kilometerFrom = value)"
-                  @update:to-value="(value) => (state.kilometerTo = value)"
-                  @clear="clearDefinition(kilometerDefinition.id)"
-                />
-
-                <Separator class="bg-[#d6dfeb]" />
-                <RangeSelectPair
-                  :label="powerDefinition.label"
-                  :from-value="state.powerFrom"
-                  :to-value="state.powerTo"
-                  :from-options="powerOptions"
-                  :to-options="powerToOptions"
-                  @update:from-value="(value) => (state.powerFrom = value)"
-                  @update:to-value="(value) => (state.powerTo = value)"
-                  @clear="clearDefinition(powerDefinition.id)"
-                />
-
-                <Separator class="bg-[#d6dfeb]" />
-                <RangeSelectPair
-                  :label="displacementDefinition.label"
-                  :from-value="state.displacementFrom"
-                  :to-value="state.displacementTo"
-                  :from-options="displacementOptions"
-                  :to-options="displacementToOptions"
-                  @update:from-value="
-                    (value) => (state.displacementFrom = value)
-                  "
-                  @update:to-value="(value) => (state.displacementTo = value)"
-                  @clear="clearDefinition(displacementDefinition.id)"
-                />
-
-                <Separator class="bg-[#d6dfeb]" />
-                <SelectFilter
-                  :label="conditionDefinition.label"
-                  :placeholder="conditionDefinition.placeholder"
-                  :options="conditionDefinition.options"
-                  :model-value="getSingleValue(conditionDefinition.stateKey)"
-                  @update:model-value="
-                    (value) =>
-                      setSingleValue(conditionDefinition.stateKey, value)
-                  "
-                />
-
-                <Separator class="bg-[#d6dfeb]" />
-
-                <div class="space-y-1">
-                  <Button
-                    variant="ghost"
-                    class="h-9 justify-start px-2 text-[15px] text-[#1e2736] hover:bg-[#e9edf3]"
-                    @click="isExtrasDialogOpen = true"
-                  >
-                    Auto extras konfigurieren
-                  </Button>
-                  <p class="text-xs text-[#5f6f87]">{{ extrasSummary }}</p>
+        <div class="min-w-0 space-y-3">
+          <Card
+            class="border-[#c8d2de] bg-[linear-gradient(135deg,#ffffff_0%,#f3f8ff_100%)] shadow-none"
+          >
+            <CardContent class="space-y-3 p-3 sm:p-4">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="space-y-0.5">
+                  <p class="text-sm font-semibold text-[#243349]">
+                    Smart Suche
+                  </p>
+                  <p class="text-xs text-[#5f7492]">
+                    Beschreibe dein Wunschauto und starte die Suche.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          </CardContent>
-        </Card>
-
-        <div class="min-w-0 space-y-4">
-          <Card class="w-full border-[#c8d2de] bg-[#f7f9fc] shadow-none">
-            <CardContent class="p-4">
-              <AppliedFiltersChips
-                :applied-filters="appliedFilters"
-                :on-remove="removeAppliedFilter"
-                :on-clear-all="clearAllFilters"
-              />
-            </CardContent>
-          </Card>
-
-          <Card class="w-full border-[#c8d2de] bg-[#f7f9fc] shadow-none">
-            <CardHeader class="p-4 pb-3">
-              <CardTitle class="text-[22px] leading-none text-[#2a3342]"
-                >Results</CardTitle
-              >
-            </CardHeader>
-            <CardContent class="p-4 pt-0">
-              <div class="relative min-h-[320px] w-full">
-                <div ref="resultsHostRef" class="min-h-[320px] w-full"></div>
-                <div
-                  v-if="isResultsLoading"
-                  class="pointer-events-none absolute inset-0 z-[2147483647] flex items-center justify-center bg-[#f7f9fc]/78"
+                <Button
+                  variant="outline"
+                  class="h-9 rounded-xl border-[#ced9e8] bg-white text-[#295ea8] hover:bg-[#eef4ff]"
+                  @click="isGuidedSearchOpen = true"
                 >
-                  <div
-                    class="flex items-center gap-2 rounded-md border border-[#d6dfeb] bg-white px-3 py-2 text-xs text-[#5f6f87]"
-                  >
-                    <Loader2 class="size-4 animate-spin text-[#5f6f87]" />
-                    <span>Laedt Ergebnisse...</span>
-                  </div>
-                </div>
-                <p
-                  v-else-if="resultsError"
-                  class="absolute left-2 top-2 text-xs text-[#d04949]"
-                >
-                  Fehler: {{ resultsError }}
-                </p>
+                  Geführte Suche starten
+                </Button>
               </div>
-              <p class="mt-2 text-[11px] text-[#90a0b7]">
-                {{ resultsMetaText }}
-              </p>
+
+              <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <Input
+                  placeholder="Beschreibe dein Traumauto..."
+                  class="h-11 w-full border-[#cfdaea] bg-white"
+                  :model-value="aiSearchQuery"
+                  @update:model-value="
+                    (value) => (aiSearchQuery = String(value))
+                  "
+                />
+                <Button
+                  class="h-11 rounded-xl bg-[#3f82f6] px-6 text-[16px] font-semibold text-white hover:bg-[#2d72e8] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#3f82f6]"
+                  :disabled="isAiSearchDisabled"
+                  @click="runAiSearch"
+                >
+                  Search
+                </Button>
+              </div>
             </CardContent>
           </Card>
+          <ResultsPanel
+            :filter-state="state"
+            :applied-filters="appliedFilters"
+            :on-clear-all="clearAllFilters"
+            :on-remove-filter="removeAppliedFilter"
+            @page-change="handleResultsPageChange"
+            @sort-change="handleResultsSortChange"
+            @favorite-change="handleResultsFavoriteChange"
+            @apply-saved-search="handleApplySavedSearch"
+          />
         </div>
       </div>
+
+      <ConfigProvider :scroll-body="{ padding: 0, margin: 0 }">
+        <Sheet v-model:open="isFilterSheetOpen">
+          <SheetTrigger as-child>
+            <Button
+              class="fixed bottom-4 right-4 z-40 size-12 rounded-full bg-[#2f64c6] p-0 text-white shadow-lg hover:bg-[#2455ad] lg:hidden"
+            >
+              <SlidersHorizontal class="size-5" />
+              <span class="sr-only">Filter öffnen</span>
+              <span
+                v-if="activeFilterCount > 0"
+                class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#ef4f6b] px-1.5 py-0.5 text-[11px] font-semibold text-white"
+              >
+                {{ activeFilterCount }}
+              </span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side="left"
+            class="w-[min(92vw,360px)] overflow-y-auto border-r-[#c8d2de] bg-[#f7f9fc] p-3 sm:max-w-none"
+          >
+            <SheetHeader class="mb-3 px-1">
+              <SheetTitle>Filter</SheetTitle>
+              <SheetDescription>
+                Filtere Fahrzeuge auf mobilen Geraeten.
+              </SheetDescription>
+            </SheetHeader>
+            <FilterAccordionPanel
+              v-bind="filterAccordionPanelProps"
+              @open-extras="openExtrasDialog"
+            />
+          </SheetContent>
+        </Sheet>
+      </ConfigProvider>
     </CardContent>
   </Card>
 
@@ -607,7 +474,7 @@ onBeforeUnmount(() => {
     :doors-value="state.doors"
     :seats-value="state.seats"
     :extras-value="state.extras"
-    :search-value="state.extrasSearch"
+    :search-value="extrasSearch"
     :door-options="doorsDefinition.options"
     :seat-options="seatsDefinition.options"
     :extra-options="extrasMultiDefinition.options"
@@ -616,7 +483,7 @@ onBeforeUnmount(() => {
     @update:doors-value="(value) => setSingleValue('doors', value)"
     @update:seats-value="(value) => setSingleValue('seats', value)"
     @update:extras-value="(value) => setMultiValue('extras', value)"
-    @update:search-value="(value) => (state.extrasSearch = value)"
+    @update:search-value="(value) => (extrasSearch = value)"
   />
 
   <GuidedSearchDialog

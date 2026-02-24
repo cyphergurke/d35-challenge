@@ -28,10 +28,7 @@ defineProps<Props>()
       </Button>
     </div>
 
-    <div
-      v-if="appliedFilters.length > 0"
-      class="flex flex-wrap gap-2"
-    >
+    <div v-if="appliedFilters.length > 0" class="flex flex-wrap gap-2">
       <Badge
         v-for="appliedFilter in appliedFilters"
         :key="`applied-${appliedFilter.id}`"
@@ -48,11 +45,6 @@ defineProps<Props>()
         </button>
       </Badge>
     </div>
-    <p
-      v-else
-      class="text-xs text-[#90a0b7]"
-    >
-      No filters selected.
-    </p>
+    <p v-else class="text-xs text-[#90a0b7]">No filters selected.</p>
   </div>
 </template>

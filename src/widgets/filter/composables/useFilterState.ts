@@ -7,7 +7,10 @@ import type {
   MultiFilterDefinition,
   MultiFilterStateKey,
   PriceFilterDefinition,
+  RangeFromStateKey,
   RangeFilterDefinition,
+  RangeToStateKey,
+  RateViewValue,
   SingleFilterDefinition,
   SingleFilterStateKey
 } from '@/widgets/filter/types/filters'
@@ -31,9 +34,16 @@ import {
   transmissionOptions,
   yearOptions
 } from '@/widgets/filter/data/options'
-import { isAllowedPriceKey, isValidNumericPaste, sanitizeNumericInput } from '@/widgets/filter/utils/helpers'
+import { buildAppliedFiltersFromState } from '@/widgets/filter/results/buildAppliedFilters'
+import { cloneFilterState } from '@/widgets/filter/utils/filterState'
+import {
+  isAllowedPriceKey,
+  isValidNumericPaste,
+  sanitizeNumericInput
+} from '@/widgets/filter/utils/helpers'
 
 const INITIAL_FILTER_STATE: FilterState = {
+  rateView: 'financing',
   category: '',
   location: undefined,
   radius: undefined,
@@ -56,8 +66,7 @@ const INITIAL_FILTER_STATE: FilterState = {
   maxPrice: '',
   doors: undefined,
   seats: undefined,
-  extras: [],
-  extrasSearch: ''
+  extras: []
 }
 
 const FILTER_DEFINITIONS: readonly FilterDefinition[] = [
@@ -291,49 +300,44 @@ const FILTER_DEFINITIONS: readonly FilterDefinition[] = [
   }
 ]
 
+const RATE_VIEW_OPTIONS: readonly { value: RateViewValue; label: string }[] = [
+  { value: 'financing', label: 'Finanzierungsraten' },
+  { value: 'leasing', label: 'Leasingraten' },
+  { value: 'subscription', label: 'Abo-Raten' }
+]
+
 function createFilterState(): FilterState {
-  return {
-    ...INITIAL_FILTER_STATE,
-    marke: [...INITIAL_FILTER_STATE.marke],
-    model: [...INITIAL_FILTER_STATE.model],
-    bodyType: [...INITIAL_FILTER_STATE.bodyType],
-    fuel: [...INITIAL_FILTER_STATE.fuel],
-    financing: [...INITIAL_FILTER_STATE.financing],
-    extras: [...INITIAL_FILTER_STATE.extras]
-  }
+  return cloneFilterState(INITIAL_FILTER_STATE)
 }
 
-function cloneFilterState(source: FilterState): FilterState {
-  return {
-    ...source,
-    marke: [...source.marke],
-    model: [...source.model],
-    bodyType: [...source.bodyType],
-    fuel: [...source.fuel],
-    financing: [...source.financing],
-    extras: [...source.extras]
-  }
-}
-
-function isMultiFilterDefinition(definition: FilterDefinition): definition is MultiFilterDefinition {
+function isMultiFilterDefinition(
+  definition: FilterDefinition
+): definition is MultiFilterDefinition {
   return definition.type === 'multi'
 }
 
-function isSingleFilterDefinition(definition: FilterDefinition): definition is SingleFilterDefinition {
+function isSingleFilterDefinition(
+  definition: FilterDefinition
+): definition is SingleFilterDefinition {
   return definition.type === 'single'
 }
 
-function isRangeFilterDefinition(definition: FilterDefinition): definition is RangeFilterDefinition {
+function isRangeFilterDefinition(
+  definition: FilterDefinition
+): definition is RangeFilterDefinition {
   return definition.type === 'range'
 }
 
-function sortByReadonlyOrder<T extends { order: number }>(definitions: readonly T[]): T[] {
+function sortByReadonlyOrder<T extends { order: number }>(
+  definitions: readonly T[]
+): T[] {
   return [...definitions].sort((a, b) => a.order - b.order)
 }
 
 export interface UseFilterStateResult {
   definitions: readonly FilterDefinition[]
   state: FilterState
+  rateViewOptions: readonly { value: RateViewValue; label: string }[]
   appliedFilters: ComputedRef<AppliedFilter[]>
   budgetDefinition: ComputedRef<PriceFilterDefinition | undefined>
   budgetSingleDefinitions: ComputedRef<SingleFilterDefinition[]>
@@ -352,20 +356,34 @@ export interface UseFilterStateResult {
   powerToOptions: ComputedRef<FilterOption[]>
   displacementToOptions: ComputedRef<FilterOption[]>
   isKilometerToDisabled: ComputedRef<boolean>
-  filteredExtraOptions: ComputedRef<FilterOption[]>
   createSnapshot: () => FilterState
   applySnapshot: (nextState: FilterState) => void
   getYearToOptionsFor: (yearFrom: string | undefined) => FilterOption[]
-  getKilometerToOptionsFor: (kilometerFrom: string | undefined) => FilterOption[]
+  getKilometerToOptionsFor: (
+    kilometerFrom: string | undefined
+  ) => FilterOption[]
   getPowerToOptionsFor: (powerFrom: string | undefined) => FilterOption[]
-  getDisplacementToOptionsFor: (displacementFrom: string | undefined) => FilterOption[]
+  getDisplacementToOptionsFor: (
+    displacementFrom: string | undefined
+  ) => FilterOption[]
   isKilometerToDisabledFor: (kilometerFrom: string | undefined) => boolean
   getMultiValue: (stateKey: MultiFilterStateKey) => string[]
   setMultiValue: (stateKey: MultiFilterStateKey, value: string[]) => void
   removeMultiValue: (stateKey: MultiFilterStateKey, value: string) => void
   clearMultiValue: (stateKey: MultiFilterStateKey) => void
   getSingleValue: (stateKey: SingleFilterStateKey) => string | undefined
-  setSingleValue: (stateKey: SingleFilterStateKey, value: string | undefined) => void
+  setSingleValue: (
+    stateKey: SingleFilterStateKey,
+    value: string | undefined
+  ) => void
+  getRangeValue: (
+    stateKey: RangeFromStateKey | RangeToStateKey
+  ) => string | undefined
+  setRangeValue: (
+    stateKey: RangeFromStateKey | RangeToStateKey,
+    value: string | undefined
+  ) => void
+  setRateView: (value: RateViewValue) => void
   clearDefinition: (definitionId: FilterDefinition['id']) => void
   clearAllFilters: () => void
   removeAppliedFilter: (filter: AppliedFilter) => void
@@ -450,10 +468,14 @@ export function useFilterState(): UseFilterStateResult {
     }
 
     const yearFromNumber = Number(yearFrom)
-    return yearOptions.filter((option) => Number(option.value) >= yearFromNumber)
+    return yearOptions.filter(
+      (option) => Number(option.value) >= yearFromNumber
+    )
   }
 
-  function getKilometerToOptionsFor(kilometerFrom: string | undefined): FilterOption[] {
+  function getKilometerToOptionsFor(
+    kilometerFrom: string | undefined
+  ): FilterOption[] {
     if (!kilometerFrom) {
       return kilometerOptions
     }
@@ -463,7 +485,9 @@ export function useFilterState(): UseFilterStateResult {
     }
 
     const kilometerFromNumber = Number(kilometerFrom)
-    return kilometerOptions.filter((option) => Number(option.value) >= kilometerFromNumber)
+    return kilometerOptions.filter(
+      (option) => Number(option.value) >= kilometerFromNumber
+    )
   }
 
   function getPowerToOptionsFor(powerFrom: string | undefined): FilterOption[] {
@@ -472,126 +496,53 @@ export function useFilterState(): UseFilterStateResult {
     }
 
     const powerFromNumber = Number(powerFrom)
-    return powerOptions.filter((option) => Number(option.value) >= powerFromNumber)
+    return powerOptions.filter(
+      (option) => Number(option.value) >= powerFromNumber
+    )
   }
 
-  function getDisplacementToOptionsFor(displacementFrom: string | undefined): FilterOption[] {
+  function getDisplacementToOptionsFor(
+    displacementFrom: string | undefined
+  ): FilterOption[] {
     if (!displacementFrom) {
       return displacementOptions
     }
 
     const displacementFromNumber = Number(displacementFrom)
-    return displacementOptions.filter((option) => Number(option.value) >= displacementFromNumber)
+    return displacementOptions.filter(
+      (option) => Number(option.value) >= displacementFromNumber
+    )
   }
 
-  function isKilometerToDisabledFor(kilometerFrom: string | undefined): boolean {
+  function isKilometerToDisabledFor(
+    kilometerFrom: string | undefined
+  ): boolean {
     return getKilometerToOptionsFor(kilometerFrom).length === 0
   }
 
-  const yearToOptions = computed<FilterOption[]>(() => getYearToOptionsFor(state.yearFrom))
+  const yearToOptions = computed<FilterOption[]>(() =>
+    getYearToOptionsFor(state.yearFrom)
+  )
 
-  const kilometerToOptions = computed<FilterOption[]>(() => getKilometerToOptionsFor(state.kilometerFrom))
+  const kilometerToOptions = computed<FilterOption[]>(() =>
+    getKilometerToOptionsFor(state.kilometerFrom)
+  )
 
-  const isKilometerToDisabled = computed(() => isKilometerToDisabledFor(state.kilometerFrom))
+  const isKilometerToDisabled = computed(() =>
+    isKilometerToDisabledFor(state.kilometerFrom)
+  )
 
-  const powerToOptions = computed<FilterOption[]>(() => getPowerToOptionsFor(state.powerFrom))
+  const powerToOptions = computed<FilterOption[]>(() =>
+    getPowerToOptionsFor(state.powerFrom)
+  )
 
   const displacementToOptions = computed<FilterOption[]>(() =>
     getDisplacementToOptionsFor(state.displacementFrom)
   )
 
-  const filteredExtraOptions = computed<FilterOption[]>(() => {
-    const normalizedSearch = state.extrasSearch.trim().toLowerCase()
-    if (!normalizedSearch) {
-      return extraOptions
-    }
-
-    return extraOptions.filter((option) => option.label.toLowerCase().includes(normalizedSearch))
-  })
-
-  const appliedFilters = computed<AppliedFilter[]>(() => {
-    const filters: AppliedFilter[] = []
-
-    for (const definition of FILTER_DEFINITIONS) {
-      if (definition.type === 'multi') {
-        for (const selectedValue of state[definition.stateKey]) {
-          filters.push({
-            id: `${definition.id}-${selectedValue}`,
-            label: `${definition.appliedLabel}: ${selectedValue}`,
-            kind: definition.appliedKind,
-            value: selectedValue,
-            definitionId: definition.id
-          })
-        }
-        continue
-      }
-
-      if (definition.type === 'single') {
-        const selectedValue = state[definition.stateKey]
-        if (!selectedValue) {
-          continue
-        }
-
-        filters.push({
-          id: `${definition.id}-${selectedValue}`,
-          label: `${definition.appliedLabel}: ${selectedValue}`,
-          kind: definition.appliedKind,
-          value: selectedValue,
-          definitionId: definition.id
-        })
-        continue
-      }
-
-      if (definition.type === 'range') {
-        const fromValue = state[definition.fromKey]
-        if (fromValue) {
-          filters.push({
-            id: `${definition.id}-from`,
-            label: `${definition.fromLabel}: ${fromValue}`,
-            kind: definition.fromKind,
-            value: fromValue,
-            definitionId: definition.id
-          })
-        }
-
-        const toValue = state[definition.toKey]
-        if (toValue) {
-          filters.push({
-            id: `${definition.id}-to`,
-            label: `${definition.toLabel}: ${toValue}`,
-            kind: definition.toKind,
-            value: toValue,
-            definitionId: definition.id
-          })
-        }
-        continue
-      }
-
-      const minValue = state[definition.minKey].trim()
-      if (minValue) {
-        filters.push({
-          id: `${definition.id}-min`,
-          label: `${definition.minLabel}: ${minValue} €`,
-          kind: definition.minKind,
-          value: minValue,
-          definitionId: definition.id
-        })
-      }
-
-      const maxValue = state[definition.maxKey].trim()
-      if (maxValue) {
-        filters.push({
-          id: `${definition.id}-max`,
-          label: `${definition.maxLabel}: ${maxValue} €`,
-          kind: definition.maxKind,
-          value: maxValue,
-          definitionId: definition.id
-        })
-      }
-    }
-
-    return filters
-  })
+  const appliedFilters = computed<AppliedFilter[]>(() =>
+    buildAppliedFiltersFromState(state)
+  )
 
   function getMultiValue(stateKey: MultiFilterStateKey): string[] {
     return state[stateKey]
@@ -601,7 +552,10 @@ export function useFilterState(): UseFilterStateResult {
     state[stateKey] = [...value]
   }
 
-  function removeMultiValue(stateKey: MultiFilterStateKey, value: string): void {
+  function removeMultiValue(
+    stateKey: MultiFilterStateKey,
+    value: string
+  ): void {
     state[stateKey] = state[stateKey].filter((item) => item !== value)
   }
 
@@ -613,8 +567,28 @@ export function useFilterState(): UseFilterStateResult {
     return state[stateKey]
   }
 
-  function setSingleValue(stateKey: SingleFilterStateKey, value: string | undefined): void {
+  function setSingleValue(
+    stateKey: SingleFilterStateKey,
+    value: string | undefined
+  ): void {
     state[stateKey] = value
+  }
+
+  function getRangeValue(
+    stateKey: RangeFromStateKey | RangeToStateKey
+  ): string | undefined {
+    return state[stateKey]
+  }
+
+  function setRangeValue(
+    stateKey: RangeFromStateKey | RangeToStateKey,
+    value: string | undefined
+  ): void {
+    state[stateKey] = value
+  }
+
+  function setRateView(value: RateViewValue): void {
+    state.rateView = value
   }
 
   function createSnapshot(): FilterState {
@@ -622,31 +596,7 @@ export function useFilterState(): UseFilterStateResult {
   }
 
   function applySnapshot(nextState: FilterState): void {
-    const snapshot = cloneFilterState(nextState)
-    state.category = snapshot.category
-    state.location = snapshot.location
-    state.radius = snapshot.radius
-    state.marke = snapshot.marke
-    state.model = snapshot.model
-    state.bodyType = snapshot.bodyType
-    state.fuel = snapshot.fuel
-    state.financing = snapshot.financing
-    state.transmission = snapshot.transmission
-    state.condition = snapshot.condition
-    state.yearFrom = snapshot.yearFrom
-    state.yearTo = snapshot.yearTo
-    state.kilometerFrom = snapshot.kilometerFrom
-    state.kilometerTo = snapshot.kilometerTo
-    state.powerFrom = snapshot.powerFrom
-    state.powerTo = snapshot.powerTo
-    state.displacementFrom = snapshot.displacementFrom
-    state.displacementTo = snapshot.displacementTo
-    state.minPrice = snapshot.minPrice
-    state.maxPrice = snapshot.maxPrice
-    state.doors = snapshot.doors
-    state.seats = snapshot.seats
-    state.extras = snapshot.extras
-    state.extrasSearch = snapshot.extrasSearch
+    Object.assign(state, cloneFilterState(nextState))
   }
 
   function clearDefinition(definitionId: FilterDefinition['id']): void {
@@ -676,9 +626,7 @@ export function useFilterState(): UseFilterStateResult {
   }
 
   function clearAllFilters(): void {
-    for (const definition of FILTER_DEFINITIONS) {
-      clearDefinition(definition.id)
-    }
+    Object.assign(state, createFilterState())
   }
 
   function removeAppliedFilter(filter: AppliedFilter): void {
@@ -809,6 +757,7 @@ export function useFilterState(): UseFilterStateResult {
   return {
     definitions: FILTER_DEFINITIONS,
     state,
+    rateViewOptions: RATE_VIEW_OPTIONS,
     appliedFilters,
     budgetDefinition,
     budgetSingleDefinitions,
@@ -827,7 +776,6 @@ export function useFilterState(): UseFilterStateResult {
     powerToOptions,
     displacementToOptions,
     isKilometerToDisabled,
-    filteredExtraOptions,
     createSnapshot,
     applySnapshot,
     getYearToOptionsFor,
@@ -841,6 +789,9 @@ export function useFilterState(): UseFilterStateResult {
     clearMultiValue,
     getSingleValue,
     setSingleValue,
+    getRangeValue,
+    setRangeValue,
+    setRateView,
     clearDefinition,
     clearAllFilters,
     removeAppliedFilter,

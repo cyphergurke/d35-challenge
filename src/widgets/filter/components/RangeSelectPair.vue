@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { AcceptableValue } from 'reka-ui'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import type { FilterOption } from '@/widgets/filter/types/filters'
 import FilterSection from '@/widgets/filter/components/FilterSection.vue'
 
@@ -14,13 +20,17 @@ interface Props {
   toOptions: FilterOption[]
   toDisabled?: boolean
   toPlaceholder?: string
+  showClear?: boolean
+  titleClass?: string
 }
 
 withDefaults(defineProps<Props>(), {
   fromLabel: 'Von',
   toLabel: 'Bis',
   toDisabled: false,
-  toPlaceholder: 'Bis'
+  toPlaceholder: 'Bis',
+  showClear: true,
+  titleClass: 'text-[20px] font-semibold text-[#2a3342]'
 })
 
 const emit = defineEmits<{
@@ -41,13 +51,16 @@ function toStringOrUndefined(value: AcceptableValue): string | undefined {
 <template>
   <FilterSection
     :label="label"
-    :can-clear="Boolean(fromValue || toValue)"
+    :title-class="titleClass"
+    :can-clear="showClear && Boolean(fromValue || toValue)"
     @clear="emit('clear')"
   >
     <div class="grid grid-cols-2 gap-2">
       <Select
         :model-value="fromValue"
-        @update:model-value="(value) => emit('update:fromValue', toStringOrUndefined(value))"
+        @update:model-value="
+          (value) => emit('update:fromValue', toStringOrUndefined(value))
+        "
       >
         <SelectTrigger>
           <SelectValue :placeholder="fromLabel" />
@@ -65,10 +78,14 @@ function toStringOrUndefined(value: AcceptableValue): string | undefined {
       <Select
         :model-value="toValue"
         :disabled="toDisabled"
-        @update:model-value="(value) => emit('update:toValue', toStringOrUndefined(value))"
+        @update:model-value="
+          (value) => emit('update:toValue', toStringOrUndefined(value))
+        "
       >
         <SelectTrigger>
-          <SelectValue :placeholder="toDisabled ? 'Nicht verfuegbar' : toPlaceholder" />
+          <SelectValue
+            :placeholder="toDisabled ? 'Nicht verfuegbar' : toPlaceholder"
+          />
         </SelectTrigger>
         <SelectContent>
           <SelectItem

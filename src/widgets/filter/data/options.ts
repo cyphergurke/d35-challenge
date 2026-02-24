@@ -50,13 +50,21 @@ export const fuelOptions: FilterOption[] = [
 
 export const transmissionOptions: FilterOption[] = [
   { id: 'transmission-automatic', label: 'Automatik', value: 'Automatik' },
-  { id: 'transmission-manual', label: 'Schaltgetriebe', value: 'Schaltgetriebe' }
+  {
+    id: 'transmission-manual',
+    label: 'Schaltgetriebe',
+    value: 'Schaltgetriebe'
+  }
 ]
 
 export const conditionOptions: FilterOption[] = [
   { id: 'condition-new', label: 'Neu', value: 'Neu' },
   { id: 'condition-used', label: 'Gebraucht', value: 'Gebraucht' },
-  { id: 'condition-demo', label: 'Vorfuehrfahrzeug', value: 'Vorfuehrfahrzeug' },
+  {
+    id: 'condition-demo',
+    label: 'Vorfuehrfahrzeug',
+    value: 'Vorfuehrfahrzeug'
+  },
   { id: 'condition-yearly', label: 'Jahreswagen', value: 'Jahreswagen' }
 ]
 
@@ -65,7 +73,11 @@ export const financingOptions: FilterOption[] = [
   { id: 'financing-abo', label: 'Abo', value: 'Abo' },
   { id: 'financing-kredit', label: 'Kredit', value: 'Kredit' },
   { id: 'financing-ratenkauf', label: 'Ratenkauf', value: 'Ratenkauf' },
-  { id: 'financing-ballon', label: 'Ballonfinanzierung', value: 'Ballonfinanzierung' }
+  {
+    id: 'financing-ballon',
+    label: 'Ballonfinanzierung',
+    value: 'Ballonfinanzierung'
+  }
 ]
 
 export const locationOptions: FilterOption[] = [
@@ -73,7 +85,11 @@ export const locationOptions: FilterOption[] = [
   { id: 'location-hamburg', label: 'Hamburg', value: 'Hamburg' },
   { id: 'location-muenchen', label: 'Muenchen', value: 'Muenchen' },
   { id: 'location-koeln', label: 'Koeln', value: 'Koeln' },
-  { id: 'location-frankfurt', label: 'Frankfurt am Main', value: 'Frankfurt am Main' },
+  {
+    id: 'location-frankfurt',
+    label: 'Frankfurt am Main',
+    value: 'Frankfurt am Main'
+  },
   { id: 'location-stuttgart', label: 'Stuttgart', value: 'Stuttgart' }
 ]
 
@@ -87,10 +103,13 @@ export const radiusOptions: FilterOption[] = [
 ]
 
 const currentYear = new Date().getFullYear()
-export const yearOptions: FilterOption[] = Array.from({ length: currentYear - 1979 }, (_, index) => {
-  const year = String(currentYear - index)
-  return { id: `year-${year}`, label: year, value: year }
-})
+export const yearOptions: FilterOption[] = Array.from(
+  { length: currentYear - 1979 },
+  (_, index) => {
+    const year = String(currentYear - index)
+    return { id: `year-${year}`, label: year, value: year }
+  }
+)
 
 export const kilometerOptions: FilterOption[] = [
   '0',
@@ -140,7 +159,11 @@ export const displacementOptions: FilterOption[] = [
   '4000',
   '5000',
   '6000'
-].map((value) => ({ id: `displacement-${value}`, label: `${value} ccm`, value }))
+].map((value) => ({
+  id: `displacement-${value}`,
+  label: `${value} ccm`,
+  value
+}))
 
 export const seatOptions: FilterOption[] = [
   { id: 'seats-2', label: '2 Sitze', value: '2' },
@@ -160,24 +183,60 @@ export const doorOptions: FilterOption[] = [
 
 export const extraOptions: FilterOption[] = [
   { id: 'extra-klimaanlage', label: 'Klimaanlage', value: 'Klimaanlage' },
-  { id: 'extra-klimaautomatik', label: 'Klimaautomatik', value: 'Klimaautomatik' },
+  {
+    id: 'extra-klimaautomatik',
+    label: 'Klimaautomatik',
+    value: 'Klimaautomatik'
+  },
   { id: 'extra-sitzheizung', label: 'Sitzheizung', value: 'Sitzheizung' },
-  { id: 'extra-sitzbelueftung', label: 'Sitzbelueftung', value: 'Sitzbelueftung' },
-  { id: 'extra-lederscheinwerfer', label: 'LED-Scheinwerfer', value: 'LED-Scheinwerfer' },
+  {
+    id: 'extra-sitzbelueftung',
+    label: 'Sitzbelueftung',
+    value: 'Sitzbelueftung'
+  },
+  {
+    id: 'extra-lederscheinwerfer',
+    label: 'LED-Scheinwerfer',
+    value: 'LED-Scheinwerfer'
+  },
   { id: 'extra-xenon', label: 'Xenon', value: 'Xenon' },
-  { id: 'extra-adaptives-licht', label: 'Adaptives Licht', value: 'Adaptives Licht' },
+  {
+    id: 'extra-adaptives-licht',
+    label: 'Adaptives Licht',
+    value: 'Adaptives Licht'
+  },
   { id: 'extra-navi', label: 'Navigationssystem', value: 'Navigationssystem' },
   { id: 'extra-apple-carplay', label: 'Apple CarPlay', value: 'Apple CarPlay' },
   { id: 'extra-android-auto', label: 'Android Auto', value: 'Android Auto' },
   { id: 'extra-bluetooth', label: 'Bluetooth', value: 'Bluetooth' },
   { id: 'extra-dab', label: 'DAB Radio', value: 'DAB Radio' },
   { id: 'extra-tempomat', label: 'Tempomat', value: 'Tempomat' },
-  { id: 'extra-adaptiver-tempomat', label: 'Adaptiver Tempomat', value: 'Adaptiver Tempomat' },
-  { id: 'extra-spurhalteassistent', label: 'Spurhalteassistent', value: 'Spurhalteassistent' },
-  { id: 'extra-totwinkelassistent', label: 'Totwinkelassistent', value: 'Totwinkelassistent' },
-  { id: 'extra-notbremsassistent', label: 'Notbremsassistent', value: 'Notbremsassistent' },
+  {
+    id: 'extra-adaptiver-tempomat',
+    label: 'Adaptiver Tempomat',
+    value: 'Adaptiver Tempomat'
+  },
+  {
+    id: 'extra-spurhalteassistent',
+    label: 'Spurhalteassistent',
+    value: 'Spurhalteassistent'
+  },
+  {
+    id: 'extra-totwinkelassistent',
+    label: 'Totwinkelassistent',
+    value: 'Totwinkelassistent'
+  },
+  {
+    id: 'extra-notbremsassistent',
+    label: 'Notbremsassistent',
+    value: 'Notbremsassistent'
+  },
   { id: 'extra-einparkhilfe', label: 'Einparkhilfe', value: 'Einparkhilfe' },
-  { id: 'extra-rueckfahrkamera', label: 'Rueckfahrkamera', value: 'Rueckfahrkamera' },
+  {
+    id: 'extra-rueckfahrkamera',
+    label: 'Rueckfahrkamera',
+    value: 'Rueckfahrkamera'
+  },
   { id: 'extra-360-kamera', label: '360 Kamera', value: '360 Kamera' },
   { id: 'extra-panorama', label: 'Panoramadach', value: 'Panoramadach' },
   { id: 'extra-ahk', label: 'Anhaengerkupplung', value: 'Anhaengerkupplung' },
@@ -187,4 +246,5 @@ export const extraOptions: FilterOption[] = [
   { id: 'extra-keyless', label: 'Keyless Entry', value: 'Keyless Entry' }
 ]
 
-export const maxKilometerValue = kilometerOptions[kilometerOptions.length - 1]?.value ?? '250000'
+export const maxKilometerValue =
+  kilometerOptions[kilometerOptions.length - 1]?.value ?? '250000'
