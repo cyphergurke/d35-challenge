@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { useFilterState } from '@/widgets/filter/composables/useFilterState'
-import AppliedFiltersChips from './components/AppliedFiltersChips.vue'
+import ResultsPanel from './results/ResultsPanel.vue'
 import MultiSelectFilter from './components/MultiSelectFilter.vue'
 import PriceRangeFilter from './components/PriceRangeFilter.vue'
 import RangeSelectPair from './components/RangeSelectPair.vue'
 import SelectFilter from './components/SelectFilter.vue'
 import ExtrasDialog from './components/ExtrasDialog.vue'
 import GuidedSearchDialog from './components/GuidedSearchDialog.vue'
-import { mountHostChild, type HostChildMountResult } from '@/utils/hostSlot'
 import type {
   FilterState,
   MultiFilterDefinition,
   RangeFilterDefinition,
   SingleFilterDefinition
 } from '@/widgets/filter/types/filters'
+import type { SortKey } from './results/types'
 
 const props = defineProps<{
   hostElement?: HTMLElement | null
@@ -182,13 +182,8 @@ const extrasMultiDefinition = requireMultiDefinition(
 const isExtrasDialogOpen = ref(false)
 const isGuidedSearchOpen = ref(false)
 const aiSearchQuery = ref('')
-const resultsHostRef = ref<HTMLDivElement | null>(null)
-const hasExternalResults = ref(false)
 const resultsPage = ref(1)
 const resultsRefreshToken = ref(0)
-
-let hostSlotMount: HostChildMountResult | null = null
-let resultsObserver: MutationObserver | null = null
 
 const extrasSummary = computed(() => {
   if (!state.doors && !state.seats && state.extras.length === 0) {
@@ -200,9 +195,6 @@ const extrasSummary = computed(() => {
   return `${doorsLabel} | ${seatsLabel} | ${state.extras.length} Extras gewaehlt`
 })
 
-const resultsMetaText = computed(
-  () => `Page ${resultsPage.value} | refresh #${resultsRefreshToken.value}`
-)
 const isAiSearchDisabled = computed(() => aiSearchQuery.value.trim().length === 0)
 
 interface FiltersAppliedDetail {
@@ -211,6 +203,33 @@ interface FiltersAppliedDetail {
   refreshToken: number
   state: FilterState
 }
+
+const FILTER_QUERY_PARAM_KEYS = [
+  'category',
+  'location',
+  'radius',
+  'marke',
+  'model',
+  'bodyType',
+  'fuel',
+  'financing',
+  'transmission',
+  'condition',
+  'yearFrom',
+  'yearTo',
+  'kilometerFrom',
+  'kilometerTo',
+  'powerFrom',
+  'powerTo',
+  'displacementFrom',
+  'displacementTo',
+  'minPrice',
+  'maxPrice',
+  'doors',
+  'seats',
+  'extras',
+  'extrasSearch'
+] as const
 
 function appendMultiParam(
   searchParams: URLSearchParams,
@@ -266,8 +285,38 @@ function buildQueryFromState(nextState: FilterState): string {
   appendSingleParam(searchParams, 'doors', nextState.doors)
   appendSingleParam(searchParams, 'seats', nextState.seats)
   appendMultiParam(searchParams, 'extras', nextState.extras)
+  appendSingleParam(searchParams, 'extrasSearch', nextState.extrasSearch)
 
   return searchParams.toString()
+}
+
+function syncFilterParamsToUri(query: string): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const nextUrl = new URL(window.location.href)
+
+  for (const filterKey of FILTER_QUERY_PARAM_KEYS) {
+    nextUrl.searchParams.delete(filterKey)
+  }
+  nextUrl.searchParams.delete('carQueryParams')
+
+  if (query) {
+    const filterParams = new URLSearchParams(query)
+    filterParams.forEach((value, key) => {
+      nextUrl.searchParams.set(key, value)
+    })
+    nextUrl.searchParams.set('carQueryParams', `&${query}`)
+  }
+
+  const currentPathWithQuery = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  const nextPathWithQuery = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`
+  if (currentPathWithQuery === nextPathWithQuery) {
+    return
+  }
+
+  window.history.replaceState(window.history.state, '', nextPathWithQuery)
 }
 
 function resetPaginationAndRefresh(): void {
@@ -307,34 +356,43 @@ function runAiSearch(): void {
   )
 }
 
-onMounted(() => {
-  const targetElement = resultsHostRef.value
-  if (!targetElement) {
-    return
-  }
+watch(
+  () => buildQueryFromState(createSnapshot()),
+  (query) => {
+    syncFilterParamsToUri(query)
+  },
+  { immediate: true }
+)
 
-  hostSlotMount = mountHostChild({
-    hostElement: props.hostElement,
-    selector: props.resultsChildSelector,
-    targetElement
-  })
+function handleResultsPageChange(page: number): void {
+  resultsPage.value = page
+  props.hostElement?.dispatchEvent(
+    new CustomEvent<{ page: number }>('results-page-change', {
+      detail: { page },
+      bubbles: true
+    })
+  )
+}
 
-  hasExternalResults.value =
-    hostSlotMount.mounted || targetElement.childElementCount > 0
+function handleResultsSortChange(sort: SortKey): void {
+  resultsPage.value = 1
+  resultsRefreshToken.value += 1
+  props.hostElement?.dispatchEvent(
+    new CustomEvent<{ sort: SortKey }>('results-sort-change', {
+      detail: { sort },
+      bubbles: true
+    })
+  )
+}
 
-  resultsObserver = new MutationObserver(() => {
-    hasExternalResults.value = targetElement.childElementCount > 0
-  })
-
-  resultsObserver.observe(targetElement, { childList: true })
-})
-
-onBeforeUnmount(() => {
-  resultsObserver?.disconnect()
-  resultsObserver = null
-  hostSlotMount?.unmount()
-  hostSlotMount = null
-})
+function handleResultsFavoriteChange(count: number): void {
+  props.hostElement?.dispatchEvent(
+    new CustomEvent<{ count: number }>('results-favorite-change', {
+      detail: { count },
+      bubbles: true
+    })
+  )
+}
 </script>
 
 <template>
@@ -554,49 +612,16 @@ onBeforeUnmount(() => {
           </CardContent>
         </Card>
 
-        <div class="min-w-0 space-y-4">
-          <Card class="w-full border-[#c8d2de] bg-[#f7f9fc] shadow-none">
-            <CardContent class="p-4">
-              <AppliedFiltersChips
-                :applied-filters="appliedFilters"
-                :on-remove="removeAppliedFilter"
-                :on-clear-all="clearAllFilters"
-              />
-            </CardContent>
-          </Card>
-
-          <Card class="w-full border-[#c8d2de] bg-[#f7f9fc] shadow-none">
-            <CardHeader class="p-4 pb-3">
-              <CardTitle class="text-[22px] leading-none text-[#2a3342]"
-                >Results</CardTitle
-              >
-            </CardHeader>
-            <CardContent class="p-4 pt-0">
-              <div class="relative min-h-[320px] w-full">
-                <div ref="resultsHostRef" class="min-h-[320px] w-full"></div>
-                <div
-                  v-if="isResultsLoading"
-                  class="pointer-events-none absolute inset-0 z-[2147483647] flex items-center justify-center bg-[#f7f9fc]/78"
-                >
-                  <div
-                    class="flex items-center gap-2 rounded-md border border-[#d6dfeb] bg-white px-3 py-2 text-xs text-[#5f6f87]"
-                  >
-                    <Loader2 class="size-4 animate-spin text-[#5f6f87]" />
-                    <span>Laedt Ergebnisse...</span>
-                  </div>
-                </div>
-                <p
-                  v-else-if="resultsError"
-                  class="absolute left-2 top-2 text-xs text-[#d04949]"
-                >
-                  Fehler: {{ resultsError }}
-                </p>
-              </div>
-              <p class="mt-2 text-[11px] text-[#90a0b7]">
-                {{ resultsMetaText }}
-              </p>
-            </CardContent>
-          </Card>
+        <div class="min-w-0">
+          <ResultsPanel
+            :filter-state="state"
+            :applied-filters="appliedFilters"
+            :on-clear-all="clearAllFilters"
+            :on-remove-filter="removeAppliedFilter"
+            @page-change="handleResultsPageChange"
+            @sort-change="handleResultsSortChange"
+            @favorite-change="handleResultsFavoriteChange"
+          />
         </div>
       </div>
     </CardContent>
