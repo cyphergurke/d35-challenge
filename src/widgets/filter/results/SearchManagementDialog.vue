@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { BellRing, Bookmark, Mail, Save, Send, Trash2 } from 'lucide-vue-next'
+import { ConfigProvider } from 'reka-ui'
 import { toast } from 'vue-sonner'
 import {
   deleteSavedSearch,
@@ -624,10 +625,11 @@ async function handleDeleteSavedSearch(
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="(value) => emit('update:open', value)">
-    <DialogScrollContent
-      class="max-h-[92vh] max-w-[1100px] border-[#c8d2de] bg-[#f8fafd] p-0"
-    >
+  <ConfigProvider :scroll-body="{ padding: 0, margin: 0 }">
+    <Dialog :open="open" @update:open="(value) => emit('update:open', value)">
+      <DialogScrollContent
+        class="max-h-[92vh] max-w-[1100px] border-[#c8d2de] bg-[#f8fafd] p-0"
+      >
       <div class="space-y-4 p-5">
         <DialogHeader>
           <DialogTitle class="text-xl text-[#1f2a3a]">Suchauftrag</DialogTitle>
@@ -883,7 +885,7 @@ async function handleDeleteSavedSearch(
                   @click="handleDeleteAlert"
                 >
                   <Trash2 class="size-4" />
-                  Suchauftrag loeschen
+                  Suchauftrag löschen
                 </Button>
               </div>
             </section>
@@ -1070,7 +1072,7 @@ async function handleDeleteSavedSearch(
                         variant="destructive"
                         @click="handleDeleteSavedSearch(savedSearch)"
                       >
-                        Loeschen
+                        löschen
                       </Button>
                     </div>
                   </div>
@@ -1090,6 +1092,7 @@ async function handleDeleteSavedSearch(
           <span class="text-[#3b5f94]">{{ feedbackMessage ?? 'Bereit' }}</span>
         </div>
       </div>
-    </DialogScrollContent>
-  </Dialog>
+      </DialogScrollContent>
+    </Dialog>
+  </ConfigProvider>
 </template>

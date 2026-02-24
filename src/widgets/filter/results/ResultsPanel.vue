@@ -39,6 +39,7 @@ const sortKey = ref<SortKey>('relevance')
 const page = ref(1)
 const pageSize = ref(12)
 const favorites = ref<Set<string>>(new Set())
+const showFavoritesOnly = ref(false)
 const isSearchDialogOpen = ref(false)
 const pageSizeOptions = [6, 9, 12, 15, 18, 21, 24] as const
 const defaultPageSizeOption = pageSizeOptions[0]
@@ -71,7 +72,8 @@ const {
   sortKey,
   page,
   pageSize,
-  favorites
+  favorites,
+  favoritesOnly: showFavoritesOnly
 })
 
 const resolvedAppliedFilters = computed<AppliedFilter[]>(() => {
@@ -278,6 +280,11 @@ function previousPage(): void {
 function nextPage(): void {
   setPage(currentPage.value + 1)
 }
+
+function toggleFavoritesOnly(): void {
+  showFavoritesOnly.value = !showFavoritesOnly.value
+  page.value = 1
+}
 </script>
 
 <template>
@@ -288,8 +295,10 @@ function nextPage(): void {
         v-model:page-size="pageSize"
         :sort-options="RESULT_SORT_OPTIONS"
         :favorites-count="favoritesCount"
+        :show-favorites-only="showFavoritesOnly"
         :total-count="totalCount"
         :page-size-options="pageSizeOptions"
+        @toggle-favorites-only="toggleFavoritesOnly"
         @open-search-alert="openSearchAlertDialog"
         @save-search="handleSaveSearch"
       />
@@ -325,7 +334,11 @@ function nextPage(): void {
         v-else-if="isEmpty"
         class="flex min-h-[260px] items-center justify-center rounded-xl border border-dashed border-[#c6d4e7] bg-white px-4 text-center text-sm text-[#68809f]"
       >
-        Keine Ergebnisse fuer die aktuelle Filterkombination gefunden.
+        {{
+          showFavoritesOnly
+            ? 'Keine Favoriten fuer die aktuelle Filterkombination gefunden.'
+            : 'Keine Ergebnisse fuer die aktuelle Filterkombination gefunden.'
+        }}
       </div>
 
       <ResultsGrid

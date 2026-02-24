@@ -24,7 +24,7 @@ defineProps<Props>()
         class="h-8 rounded-lg text-xs text-[#31435d] hover:bg-[#edf2f8]"
         @click="onClearAll()"
       >
-        Alle loeschen
+        Alle löschen
       </Button>
     </div>
 

@@ -9,6 +9,7 @@ interface UseResultsParams {
   page: Ref<number>
   pageSize: Ref<number>
   favorites: Ref<Set<string>>
+  favoritesOnly: Ref<boolean>
   sourceItems?: readonly CarListing[]
 }
 
@@ -190,8 +191,17 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
     })
   })
 
+  const visibleItems = computed<CarListing[]>(() => {
+    if (!params.favoritesOnly.value) {
+      return filteredItems.value
+    }
+
+    const favoriteIds = params.favorites.value
+    return filteredItems.value.filter((item) => favoriteIds.has(item.id))
+  })
+
   const sortedItems = computed<CarListing[]>(() => {
-    const items = [...filteredItems.value]
+    const items = [...visibleItems.value]
 
     items.sort((left, right) => {
       switch (params.sortKey.value) {
@@ -221,7 +231,7 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
     return items
   })
 
-  const totalCount = computed(() => filteredItems.value.length)
+  const totalCount = computed(() => sortedItems.value.length)
   const totalPages = computed(() => {
     const safePageSize = Math.max(1, params.pageSize.value)
     return totalCount.value === 0
