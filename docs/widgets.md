@@ -7,7 +7,7 @@ Diese Anleitung beschreibt, wie in diesem Projekt neue Widgets als Custom Elemen
 Ein Widget soll als eigener HTML-Tag nutzbar sein, z. B.:
 
 ```html
-<auto-shop-filter-widget></auto-shop-filter-widget>
+<digital35-meinfahrzeugshop-suche></digital35-meinfahrzeugshop-suche>
 ```
 
 Die Registrierung und das Mounting laufen über den generischen Adapter in `src/widgets/adapter/createWidgetAdapter.ts`.
@@ -115,7 +115,7 @@ Empfohlenes Verhalten:
 `vite.config.ts` enthält aktuell:
 
 - `custom-elements-wrapper`
-- `auto-shop-filter-widget`
+- `digital35-meinfahrzeugshop-suche`
 
 Für neue Tags gibt es zwei Optionen:
 

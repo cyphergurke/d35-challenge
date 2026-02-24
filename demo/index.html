@@ -3,13 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Digital35 MeinFahrzeugshop Suche</title>
+    <title>Digital35 Filter Widget Demo</title>
     <style>
       body {
         margin: 0;
         font-family: Arial, sans-serif;
         background: #f3f4f6;
         padding: 16px;
+      }
+
+      .demo-shell {
+        margin: 0 auto;
+        max-width: 1400px;
       }
 
       digital35-meinfahrzeugshop-suche {
@@ -19,56 +24,10 @@
     </style>
   </head>
   <body>
-    <section
-      class="mx-auto w-full max-w-[1400px] rounded-2xl border border-[#cfd9e6] bg-[#f4f6f9] p-4 shadow-sm"
-    >
-      <div class="mb-6">
-        <h1
-          class="text-[36px] leading-[0.9] font-semibold tracking-[-0.03em] text-[#202735]"
-        >
-          Digital 35 - Challenge
-        </h1>
-      </div>
-
-      <div class="border border-[#c8d2de] bg-[#f7f9fc] shadow-none rounded-xl">
-        <div class="flex flex-row items-start justify-between gap-4 p-4">
-          <div class="min-w-0">
-            <h2 class="text-[2rem] leading-[0.95] text-[#2a3342] font-semibold">
-              Search &amp; Filter
-            </h2>
-            <p class="mt-2 text-sm leading-6 text-[#5f6f87]">
-              Standalone Filter UI.
-            </p>
-          </div>
-        </div>
-
-        <div class="p-4 pt-0">
-          <digital35-meinfahrzeugshop-suche>
-            <custom-elements-wrapper
-              id="mops-results"
-              client-base-url="https://minrath.de/fahrzeugshop#"
-              api-base-url="https://production.meinfahrzeug.shop/api"
-              cdn-url="https://s3-eu-central-1.ionoscloud.com/static-webshop/881d1f9e-ce12-43ce-9a64-e9fe1caf1ff7/widgets/production/"
-              query-params=""
-              widget-type="1"
-              tenant-admin-id="881d1f9e-ce12-43ce-9a64-e9fe1caf1ff7"
-              is-car-carousel-autoplay="false"
-              padding-x="32px"
-              padding-top="0px"
-              padding-bottom="32px"
-              pages-search-filter-enforced-manufacturer=""
-              search-filter-enforced-vehicle-types=""
-              enforced-vehicle-request-parameters=""
-            ></custom-elements-wrapper>
-          </digital35-meinfahrzeugshop-suche>
-        </div>
-      </div>
+    <section class="demo-shell">
+      <digital35-meinfahrzeugshop-suche></digital35-meinfahrzeugshop-suche>
     </section>
-
-    <script
-      src="https://s3-eu-central-1.ionoscloud.com/static-webshop/881d1f9e-ce12-43ce-9a64-e9fe1caf1ff7/widgets/production/wrapper.js"
-      async
-    ></script>
-    <script type="module" src="/src/widgets/filter/index.ts"></script>
+ 
+    <script type="module" src="https://d35-challenge.cypherweb.dev/src/widgets/filter/index.ts"></script>
   </body>
 </html>
