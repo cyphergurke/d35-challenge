@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { useFilterUrlSync } from '@/widgets/filter/composables/useFilterUrlSync'
 import { useFilterState } from '@/widgets/filter/composables/useFilterState'
 import ResultsPanel from './results/ResultsPanel.vue'
 import MultiSelectFilter from './components/MultiSelectFilter.vue'
@@ -47,7 +48,6 @@ const {
   powerToOptions,
   displacementToOptions,
   isKilometerToDisabled,
-  filteredExtraOptions,
   createSnapshot,
   applySnapshot,
   getYearToOptionsFor,
@@ -79,11 +79,17 @@ function requireSingleDefinition(
   id: SingleFilterDefinition['id']
 ): SingleFilterDefinition {
   const definition = definitions.find((item) => item.id === id)
-  if (!definition) {
+  if (definition) {
+    return definition
+  }
+
+  const fallback = definitions[0]
+  if (!fallback) {
     throw new Error(`Missing single filter definition: ${id}`)
   }
 
-  return definition
+  console.warn(`[AutoShopFilterWidget] Missing single filter definition: ${id}`)
+  return fallback
 }
 
 function requireRangeDefinition(
@@ -91,11 +97,17 @@ function requireRangeDefinition(
   id: RangeFilterDefinition['id']
 ): RangeFilterDefinition {
   const definition = definitions.find((item) => item.id === id)
-  if (!definition) {
+  if (definition) {
+    return definition
+  }
+
+  const fallback = definitions[0]
+  if (!fallback) {
     throw new Error(`Missing range filter definition: ${id}`)
   }
 
-  return definition
+  console.warn(`[AutoShopFilterWidget] Missing range filter definition: ${id}`)
+  return fallback
 }
 
 function requireMultiDefinition(
@@ -103,11 +115,17 @@ function requireMultiDefinition(
   id: MultiFilterDefinition['id']
 ): MultiFilterDefinition {
   const definition = definitions.find((item) => item.id === id)
-  if (!definition) {
+  if (definition) {
+    return definition
+  }
+
+  const fallback = definitions[0]
+  if (!fallback) {
     throw new Error(`Missing multi filter definition: ${id}`)
   }
 
-  return definition
+  console.warn(`[AutoShopFilterWidget] Missing multi filter definition: ${id}`)
+  return fallback
 }
 
 const categoryDefinition = requireSingleDefinition(
@@ -181,9 +199,22 @@ const extrasMultiDefinition = requireMultiDefinition(
 
 const isExtrasDialogOpen = ref(false)
 const isGuidedSearchOpen = ref(false)
+const extrasSearch = ref('')
 const aiSearchQuery = ref('')
 const resultsPage = ref(1)
 const resultsRefreshToken = ref(0)
+const resultsSortKey = ref<SortKey>('relevance')
+
+const filteredExtraOptions = computed(() => {
+  const searchTerm = extrasSearch.value.trim().toLowerCase()
+  if (!searchTerm) {
+    return extrasMultiDefinition.options
+  }
+
+  return extrasMultiDefinition.options.filter((option) =>
+    option.label.toLowerCase().includes(searchTerm)
+  )
+})
 
 const extrasSummary = computed(() => {
   if (!state.doors && !state.seats && state.extras.length === 0) {
@@ -199,122 +230,18 @@ const isAiSearchDisabled = computed(
   () => aiSearchQuery.value.trim().length === 0
 )
 
-interface FiltersAppliedDetail {
+interface SearchRequestedDetail {
+  source: 'guided-search' | 'results-page' | 'results-sort' | 'saved-search'
   query: string
+  sort: SortKey
   page: number
   refreshToken: number
   state: FilterState
 }
-
-const SINGLE_OPTIONAL_FILTER_KEYS = [
-  'location',
-  'radius',
-  'transmission',
-  'condition',
-  'yearFrom',
-  'yearTo',
-  'kilometerFrom',
-  'kilometerTo',
-  'powerFrom',
-  'powerTo',
-  'displacementFrom',
-  'displacementTo',
-  'doors',
-  'seats'
-] as const
-
-const SINGLE_REQUIRED_FILTER_KEYS = [
-  'category',
-  'minPrice',
-  'maxPrice',
-  'extrasSearch'
-] as const
-
-const MULTI_FILTER_KEYS = [
-  'marke',
-  'model',
-  'bodyType',
-  'fuel',
-  'financing',
-  'extras'
-] as const
-
-const SINGLE_FILTER_KEYS = [
-  ...SINGLE_REQUIRED_FILTER_KEYS,
-  ...SINGLE_OPTIONAL_FILTER_KEYS
-] as const
-
-const FILTER_QUERY_PARAM_KEYS: readonly string[] = [
-  ...SINGLE_FILTER_KEYS,
-  ...MULTI_FILTER_KEYS
-]
-
-function appendMultiParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: string[]
-): void {
-  if (value.length === 0) {
-    return
-  }
-
-  searchParams.set(key, value.join(','))
-}
-
-function appendSingleParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: string | undefined
-): void {
-  if (!value) {
-    return
-  }
-
-  searchParams.set(key, value)
-}
-
-function buildQueryFromState(nextState: FilterState): string {
-  const searchParams = new URLSearchParams()
-
-  for (const key of SINGLE_FILTER_KEYS) {
-    appendSingleParam(searchParams, key, nextState[key])
-  }
-
-  for (const key of MULTI_FILTER_KEYS) {
-    appendMultiParam(searchParams, key, nextState[key])
-  }
-
-  return searchParams.toString()
-}
-
-function syncFilterParamsToUri(query: string): void {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  const nextUrl = new URL(window.location.href)
-
-  for (const filterKey of FILTER_QUERY_PARAM_KEYS) {
-    nextUrl.searchParams.delete(filterKey)
-  }
-  nextUrl.searchParams.delete('carQueryParams')
-
-  if (query) {
-    const filterParams = new URLSearchParams(query)
-    filterParams.forEach((value, key) => {
-      nextUrl.searchParams.set(key, value)
-    })
-    nextUrl.searchParams.set('carQueryParams', `&${query}`)
-  }
-
-  const currentPathWithQuery = `${window.location.pathname}${window.location.search}${window.location.hash}`
-  const nextPathWithQuery = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`
-  if (currentPathWithQuery === nextPathWithQuery) {
-    return
-  }
-
-  window.history.replaceState(window.history.state, '', nextPathWithQuery)
-}
+const { buildQueryFromState } = useFilterUrlSync({
+  createSnapshot,
+  applySnapshot
+})
 
 function resetPaginationAndRefresh(): void {
   resultsPage.value = 1
@@ -324,20 +251,7 @@ function resetPaginationAndRefresh(): void {
 function applyGuidedSearch(nextState: FilterState): void {
   applySnapshot(nextState)
   resetPaginationAndRefresh()
-
-  const detail: FiltersAppliedDetail = {
-    query: buildQueryFromState(nextState),
-    page: resultsPage.value,
-    refreshToken: resultsRefreshToken.value,
-    state: createSnapshot()
-  }
-
-  props.hostElement?.dispatchEvent(
-    new CustomEvent<FiltersAppliedDetail>('filters-applied', {
-      detail,
-      bubbles: true
-    })
-  )
+  dispatchSearchRequested('guided-search')
 }
 
 function runAiSearch(): void {
@@ -353,156 +267,37 @@ function runAiSearch(): void {
   )
 }
 
-function parseMultiFromParam(value: string | null): string[] {
-  if (!value) {
-    return []
+function dispatchSearchRequested(
+  source: SearchRequestedDetail['source']
+): void {
+  const snapshot = createSnapshot()
+  const detail: SearchRequestedDetail = {
+    source,
+    query: buildQueryFromState(snapshot),
+    sort: resultsSortKey.value,
+    page: resultsPage.value,
+    refreshToken: resultsRefreshToken.value,
+    state: snapshot
   }
 
-  return value
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
+  props.hostElement?.dispatchEvent(
+    new CustomEvent<SearchRequestedDetail>('search-requested', {
+      detail,
+      bubbles: true
+    })
+  )
 }
-
-function parseOptionalParam(searchParams: URLSearchParams, key: string): string | undefined {
-  if (!searchParams.has(key)) {
-    return undefined
-  }
-
-  const rawValue = searchParams.get(key)
-  if (rawValue === null) {
-    return undefined
-  }
-
-  const normalizedValue = rawValue.trim()
-  return normalizedValue.length > 0 ? normalizedValue : undefined
-}
-
-function buildFilterParamsFromUri(): URLSearchParams {
-  const merged = new URLSearchParams()
-
-  if (typeof window === 'undefined') {
-    return merged
-  }
-
-  const currentUrl = new URL(window.location.href)
-
-  for (const key of FILTER_QUERY_PARAM_KEYS) {
-    if (!currentUrl.searchParams.has(key)) {
-      continue
-    }
-
-    merged.set(key, currentUrl.searchParams.get(key) ?? '')
-  }
-
-  const rawCarQueryParams = currentUrl.searchParams.get('carQueryParams')
-  if (!rawCarQueryParams) {
-    return merged
-  }
-
-  const normalizedCarQueryParams = rawCarQueryParams.startsWith('&')
-    ? rawCarQueryParams.slice(1)
-    : rawCarQueryParams
-  const carQuerySearchParams = new URLSearchParams(normalizedCarQueryParams)
-
-  for (const key of FILTER_QUERY_PARAM_KEYS) {
-    if (merged.has(key) || !carQuerySearchParams.has(key)) {
-      continue
-    }
-
-    merged.set(key, carQuerySearchParams.get(key) ?? '')
-  }
-
-  return merged
-}
-
-function hasAnyFilterValue(nextState: FilterState): boolean {
-  for (const key of SINGLE_FILTER_KEYS) {
-    const value = nextState[key]
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return true
-    }
-  }
-
-  for (const key of MULTI_FILTER_KEYS) {
-    if (nextState[key].length > 0) {
-      return true
-    }
-  }
-
-  return false
-}
-
-function parseStateFromUri(): FilterState | null {
-  const uriSearchParams = buildFilterParamsFromUri()
-  if (Array.from(uriSearchParams.keys()).length === 0) {
-    return null
-  }
-
-  const nextState = createSnapshot()
-
-  for (const key of SINGLE_OPTIONAL_FILTER_KEYS) {
-    nextState[key] = parseOptionalParam(uriSearchParams, key)
-  }
-
-  for (const key of SINGLE_REQUIRED_FILTER_KEYS) {
-    nextState[key] = parseOptionalParam(uriSearchParams, key) ?? ''
-  }
-
-  for (const key of MULTI_FILTER_KEYS) {
-    nextState[key] = parseMultiFromParam(uriSearchParams.get(key))
-  }
-
-  return hasAnyFilterValue(nextState) ? nextState : null
-}
-
-function hydrateStateFromUriIfStateIsEmpty(): void {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  const currentStateSnapshot = createSnapshot()
-  if (hasAnyFilterValue(currentStateSnapshot)) {
-    return
-  }
-
-  const uriState = parseStateFromUri()
-  if (!uriState) {
-    return
-  }
-
-  applySnapshot(uriState)
-}
-
-hydrateStateFromUriIfStateIsEmpty()
-
-watch(
-  () => buildQueryFromState(createSnapshot()),
-  (query) => {
-    syncFilterParamsToUri(query)
-  },
-  { immediate: true }
-)
 
 function handleResultsPageChange(page: number): void {
   resultsPage.value = page
-  props.hostElement?.dispatchEvent(
-    new CustomEvent<{ page: number }>('results-page-change', {
-      detail: { page },
-      bubbles: true
-    })
-  )
+  dispatchSearchRequested('results-page')
 }
 
 function handleResultsSortChange(sort: SortKey): void {
+  resultsSortKey.value = sort
   resultsPage.value = 1
   resultsRefreshToken.value += 1
-  props.hostElement?.dispatchEvent(
-    new CustomEvent<{ sort: SortKey }>('results-sort-change', {
-      detail: { sort },
-      bubbles: true
-    })
-  )
+  dispatchSearchRequested('results-sort')
 }
 
 function handleResultsFavoriteChange(count: number): void {
@@ -518,19 +313,11 @@ function handleApplySavedSearch(payload: {
   filters: FilterState
   sortKey: SortKey
 }): void {
+  resultsSortKey.value = payload.sortKey
   applySnapshot(payload.filters)
   resultsPage.value = 1
   resultsRefreshToken.value += 1
-
-  props.hostElement?.dispatchEvent(
-    new CustomEvent<{ filters: FilterState; sortKey: SortKey }>(
-      'saved-search-applied',
-      {
-        detail: payload,
-        bubbles: true
-      }
-    )
-  )
+  dispatchSearchRequested('saved-search')
 }
 </script>
 
@@ -726,17 +513,20 @@ function handleApplySavedSearch(payload: {
             </Card>
           </CardContent>
         </Card>
- 
-       
 
         <div class="min-w-0 space-y-3">
-          <Card class="border-[#c8d2de] bg-[linear-gradient(135deg,#ffffff_0%,#f3f8ff_100%)] shadow-none">
+          <Card
+            class="border-[#c8d2de] bg-[linear-gradient(135deg,#ffffff_0%,#f3f8ff_100%)] shadow-none"
+          >
             <CardContent class="space-y-3 p-3 sm:p-4">
               <div class="flex flex-wrap items-start justify-between gap-2">
                 <div class="space-y-0.5">
-                  <p class="text-sm font-semibold text-[#243349]">Smart Suche</p>
+                  <p class="text-sm font-semibold text-[#243349]">
+                    Smart Suche
+                  </p>
                   <p class="text-xs text-[#5f7492]">
-                    Beschreibe dein Wunschauto in Alltagssprache und starte die Suche.
+                    Beschreibe dein Wunschauto in Alltagssprache und starte die
+                    Suche.
                   </p>
                 </div>
                 <Button
@@ -753,7 +543,9 @@ function handleApplySavedSearch(payload: {
                   placeholder="Beschreibe dein Traumauto..."
                   class="h-11 w-full border-[#cfdaea] bg-white"
                   :model-value="aiSearchQuery"
-                  @update:model-value="(value) => (aiSearchQuery = String(value))"
+                  @update:model-value="
+                    (value) => (aiSearchQuery = String(value))
+                  "
                 />
                 <Button
                   class="h-11 rounded-xl bg-[#3f82f6] px-6 text-[16px] font-semibold text-white hover:bg-[#2d72e8] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#3f82f6]"
@@ -785,7 +577,7 @@ function handleApplySavedSearch(payload: {
     :doors-value="state.doors"
     :seats-value="state.seats"
     :extras-value="state.extras"
-    :search-value="state.extrasSearch"
+    :search-value="extrasSearch"
     :door-options="doorsDefinition.options"
     :seat-options="seatsDefinition.options"
     :extra-options="extrasMultiDefinition.options"
@@ -794,7 +586,7 @@ function handleApplySavedSearch(payload: {
     @update:doors-value="(value) => setSingleValue('doors', value)"
     @update:seats-value="(value) => setSingleValue('seats', value)"
     @update:extras-value="(value) => setMultiValue('extras', value)"
-    @update:search-value="(value) => (state.extrasSearch = value)"
+    @update:search-value="(value) => (extrasSearch = value)"
   />
 
   <GuidedSearchDialog

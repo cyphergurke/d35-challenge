@@ -22,7 +22,12 @@ import type {
   RangeFilterDefinition,
   SingleFilterDefinition
 } from '@/widgets/filter/types/filters'
-import { isAllowedPriceKey, isValidNumericPaste, sanitizeNumericInput } from '@/widgets/filter/utils/helpers'
+import { cloneFilterState } from '@/widgets/filter/utils/filterState'
+import {
+  isAllowedPriceKey,
+  isValidNumericPaste,
+  sanitizeNumericInput
+} from '@/widgets/filter/utils/helpers'
 import MultiSelectFilter from './MultiSelectFilter.vue'
 import PriceRangeFilter from './PriceRangeFilter.vue'
 import RangeSelectPair from './RangeSelectPair.vue'
@@ -49,7 +54,13 @@ interface GuidedDefinitions {
   extras: MultiFilterDefinition
 }
 
-type GuidedStepId = 'budget' | 'location' | 'brand-model' | 'history' | 'vehicle' | 'equipment'
+type GuidedStepId =
+  | 'budget'
+  | 'location'
+  | 'brand-model'
+  | 'history'
+  | 'vehicle'
+  | 'equipment'
 
 interface GuidedStep {
   id: GuidedStepId
@@ -66,9 +77,13 @@ interface Props {
   powerOptions: FilterOption[]
   displacementOptions: FilterOption[]
   getYearToOptionsFor: (yearFrom: string | undefined) => FilterOption[]
-  getKilometerToOptionsFor: (kilometerFrom: string | undefined) => FilterOption[]
+  getKilometerToOptionsFor: (
+    kilometerFrom: string | undefined
+  ) => FilterOption[]
   getPowerToOptionsFor: (powerFrom: string | undefined) => FilterOption[]
-  getDisplacementToOptionsFor: (displacementFrom: string | undefined) => FilterOption[]
+  getDisplacementToOptionsFor: (
+    displacementFrom: string | undefined
+  ) => FilterOption[]
   isKilometerToDisabledFor: (kilometerFrom: string | undefined) => boolean
 }
 
@@ -90,19 +105,8 @@ const steps: GuidedStep[] = [
 
 const fallbackStep: GuidedStep = { id: 'budget', label: 'Budget' }
 
-function cloneFilterState(source: FilterState): FilterState {
-  return {
-    ...source,
-    marke: [...source.marke],
-    model: [...source.model],
-    bodyType: [...source.bodyType],
-    fuel: [...source.fuel],
-    financing: [...source.financing],
-    extras: [...source.extras]
-  }
-}
-
 const draftState = reactive<FilterState>(cloneFilterState(props.initialState))
+const extrasSearch = ref('')
 const currentStepIndex = ref(0)
 
 const openProxy = computed<boolean>({
@@ -119,11 +123,14 @@ watch(
 
     const snapshot = cloneFilterState(props.initialState)
     Object.assign(draftState, snapshot)
+    extrasSearch.value = ''
     currentStepIndex.value = 0
   }
 )
 
-const currentStep = computed<GuidedStep>(() => steps[currentStepIndex.value] ?? fallbackStep)
+const currentStep = computed<GuidedStep>(
+  () => steps[currentStepIndex.value] ?? fallbackStep
+)
 
 const progressValue = computed(() => {
   const totalSteps = steps.length
@@ -144,7 +151,9 @@ const currentStepValue = computed<GuidedStepId>({
 
 const isLastStep = computed(() => currentStepIndex.value === steps.length - 1)
 const canGoBack = computed(() => currentStepIndex.value > 0)
-const canSkip = computed(() => Boolean(currentStep.value.optional) && !isLastStep.value)
+const canSkip = computed(
+  () => Boolean(currentStep.value.optional) && !isLastStep.value
+)
 
 const hasBudgetRangeError = computed(() => {
   if (!draftState.minPrice || !draftState.maxPrice) {
@@ -157,15 +166,19 @@ const hasBudgetRangeError = computed(() => {
 const canGoNext = computed(() => !hasBudgetRangeError.value)
 
 const filteredExtraOptions = computed(() => {
-  const searchTerm = draftState.extrasSearch.trim().toLowerCase()
+  const searchTerm = extrasSearch.value.trim().toLowerCase()
   if (!searchTerm) {
     return props.definitions.extras.options
   }
 
-  return props.definitions.extras.options.filter((option) => option.label.toLowerCase().includes(searchTerm))
+  return props.definitions.extras.options.filter((option) =>
+    option.label.toLowerCase().includes(searchTerm)
+  )
 })
 
-const popularExtraOptions = computed(() => props.definitions.extras.options.slice(0, 10))
+const popularExtraOptions = computed(() =>
+  props.definitions.extras.options.slice(0, 10)
+)
 
 function goNext(): void {
   if (!canGoNext.value || isLastStep.value) {
@@ -228,27 +241,28 @@ function toggleExtra(extra: string): void {
 
 <template>
   <Dialog v-model:open="openProxy">
-    <DialogContent class="max-h-[92vh] w-[96vw] max-w-[960px] overflow-hidden rounded-2xl border-[#c8d2de] bg-[#f7f9fc] p-0">
+    <DialogContent
+      class="max-h-[92vh] w-[96vw] max-w-[960px] overflow-hidden rounded-2xl border-[#c8d2de] bg-[#f7f9fc] p-0"
+    >
       <DialogHeader class="space-y-3 border-b border-[#d6dfeb] px-5 py-4">
         <div class="flex items-center justify-between gap-4">
           <div>
-            <DialogTitle class="text-[26px] text-[#2a3342]">Start Guided Search</DialogTitle>
+            <DialogTitle class="text-[26px] text-[#2a3342]"
+              >Start Guided Search</DialogTitle
+            >
             <DialogDescription class="mt-1 text-sm text-[#5f6f87]">
-              Schritt {{ currentStepIndex + 1 }} von {{ steps.length }}: {{ currentStep.label }}
+              Schritt {{ currentStepIndex + 1 }} von {{ steps.length }}:
+              {{ currentStep.label }}
             </DialogDescription>
           </div>
         </div>
-        <Progress
-          :model-value="progressValue"
-          class="h-2 bg-[#d8e2f0]"
-        />
+        <Progress :model-value="progressValue" class="h-2 bg-[#d8e2f0]" />
       </DialogHeader>
 
-      <Tabs
-        v-model="currentStepValue"
-        class="flex h-full flex-col"
-      >
-        <TabsList class="mx-5 mt-4 grid h-auto grid-cols-3 gap-2 bg-transparent p-0 md:grid-cols-6">
+      <Tabs v-model="currentStepValue" class="flex h-full flex-col">
+        <TabsList
+          class="mx-5 mt-4 grid h-auto grid-cols-3 gap-2 bg-transparent p-0 md:grid-cols-6"
+        >
           <TabsTrigger
             v-for="(step, index) in steps"
             :key="step.id"
@@ -265,13 +279,11 @@ function toggleExtra(extra: string): void {
             v-if="hasBudgetRangeError"
             class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
           >
-            Budget-Fehler: Der Maximalpreis darf nicht kleiner als der Minimalpreis sein.
+            Budget-Fehler: Der Maximalpreis darf nicht kleiner als der
+            Minimalpreis sein.
           </div>
 
-          <section
-            v-if="currentStep.id === 'budget'"
-            class="space-y-4"
-          >
+          <section v-if="currentStep.id === 'budget'" class="space-y-4">
             <PriceRangeFilter
               :label="definitions.budget.label"
               :min-value="draftState.minPrice"
@@ -297,14 +309,13 @@ function toggleExtra(extra: string): void {
               :options="definitions.financing.options"
               :model-value="draftState.financing"
               :show-chips="true"
-              @update:model-value="(value) => (draftState.financing = [...value])"
+              @update:model-value="
+                (value) => (draftState.financing = [...value])
+              "
             />
           </section>
 
-          <section
-            v-else-if="currentStep.id === 'location'"
-            class="space-y-4"
-          >
+          <section v-else-if="currentStep.id === 'location'" class="space-y-4">
             <SelectFilter
               :label="definitions.location.label"
               :placeholder="definitions.location.placeholder"
@@ -359,10 +370,7 @@ function toggleExtra(extra: string): void {
             />
           </section>
 
-          <section
-            v-else-if="currentStep.id === 'history'"
-            class="space-y-4"
-          >
+          <section v-else-if="currentStep.id === 'history'" class="space-y-4">
             <RangeSelectPair
               :label="definitions.year.label"
               :from-value="draftState.yearFrom"
@@ -399,10 +407,7 @@ function toggleExtra(extra: string): void {
             />
           </section>
 
-          <section
-            v-else-if="currentStep.id === 'vehicle'"
-            class="space-y-4"
-          >
+          <section v-else-if="currentStep.id === 'vehicle'" class="space-y-4">
             <RangeSelectPair
               :label="definitions.power.label"
               :from-value="draftState.powerFrom"
@@ -426,8 +431,12 @@ function toggleExtra(extra: string): void {
               :from-value="draftState.displacementFrom"
               :to-value="draftState.displacementTo"
               :from-options="displacementOptions"
-              :to-options="getDisplacementToOptionsFor(draftState.displacementFrom)"
-              @update:from-value="(value) => (draftState.displacementFrom = value)"
+              :to-options="
+                getDisplacementToOptionsFor(draftState.displacementFrom)
+              "
+              @update:from-value="
+                (value) => (draftState.displacementFrom = value)
+              "
               @update:to-value="(value) => (draftState.displacementTo = value)"
               @clear="
                 () => {
@@ -468,14 +477,13 @@ function toggleExtra(extra: string): void {
               :options="definitions.bodyType.options"
               :model-value="draftState.bodyType"
               :show-chips="true"
-              @update:model-value="(value) => (draftState.bodyType = [...value])"
+              @update:model-value="
+                (value) => (draftState.bodyType = [...value])
+              "
             />
           </section>
 
-          <section
-            v-else
-            class="space-y-4"
-          >
+          <section v-else class="space-y-4">
             <SelectFilter
               :label="definitions.condition.label"
               :placeholder="definitions.condition.placeholder"
@@ -530,17 +538,23 @@ function toggleExtra(extra: string): void {
 
               <div class="relative w-full items-center">
                 <Input
-                  :model-value="draftState.extrasSearch"
+                  :model-value="extrasSearch"
                   class="w-full pl-9"
                   placeholder="Extras suchen"
-                  @update:model-value="(value) => (draftState.extrasSearch = String(value))"
+                  @update:model-value="
+                    (value) => (extrasSearch = String(value))
+                  "
                 />
-                <span class="pointer-events-none absolute start-0 inset-y-0 flex items-center justify-center px-3">
+                <span
+                  class="pointer-events-none absolute start-0 inset-y-0 flex items-center justify-center px-3"
+                >
                   <Search class="size-4 text-muted-foreground" />
                 </span>
               </div>
 
-              <div class="max-h-[240px] overflow-y-auto rounded-lg border border-[#d3dbe7] bg-white p-1">
+              <div
+                class="max-h-[240px] overflow-y-auto rounded-lg border border-[#d3dbe7] bg-white p-1"
+              >
                 <button
                   v-for="option in filteredExtraOptions"
                   :key="`extra-${option.id}`"
@@ -572,7 +586,9 @@ function toggleExtra(extra: string): void {
         </div>
       </Tabs>
 
-      <DialogFooter class="border-t border-[#d6dfeb] bg-[#f7f9fc] px-5 py-4 sm:justify-between">
+      <DialogFooter
+        class="border-t border-[#d6dfeb] bg-[#f7f9fc] px-5 py-4 sm:justify-between"
+      >
         <div class="flex items-center gap-2">
           <Button
             variant="outline"

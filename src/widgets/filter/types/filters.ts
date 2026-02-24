@@ -28,12 +28,17 @@ export interface FilterValueMap {
   doors: string | undefined
   seats: string | undefined
   extras: string[]
-  extrasSearch: string
 }
 
 export type FilterState = FilterValueMap
 
-export type MultiFilterStateKey = 'marke' | 'model' | 'bodyType' | 'fuel' | 'financing' | 'extras'
+export type MultiFilterStateKey =
+  | 'marke'
+  | 'model'
+  | 'bodyType'
+  | 'fuel'
+  | 'financing'
+  | 'extras'
 export type SingleFilterStateKey =
   | 'category'
   | 'location'
@@ -42,8 +47,16 @@ export type SingleFilterStateKey =
   | 'condition'
   | 'doors'
   | 'seats'
-export type RangeFromStateKey = 'yearFrom' | 'kilometerFrom' | 'powerFrom' | 'displacementFrom'
-export type RangeToStateKey = 'yearTo' | 'kilometerTo' | 'powerTo' | 'displacementTo'
+export type RangeFromStateKey =
+  | 'yearFrom'
+  | 'kilometerFrom'
+  | 'powerFrom'
+  | 'displacementFrom'
+export type RangeToStateKey =
+  | 'yearTo'
+  | 'kilometerTo'
+  | 'powerTo'
+  | 'displacementTo'
 
 export const FILTER_DEFINITION_IDS = [
   'category',
@@ -68,8 +81,14 @@ export const FILTER_DEFINITION_IDS = [
 
 export type FilterDefinitionId = (typeof FILTER_DEFINITION_IDS)[number]
 
-export const RANGE_FILTER_DEFINITION_IDS = ['year', 'kilometer', 'power', 'displacement'] as const
-export type RangeFilterDefinitionId = (typeof RANGE_FILTER_DEFINITION_IDS)[number]
+export const RANGE_FILTER_DEFINITION_IDS = [
+  'year',
+  'kilometer',
+  'power',
+  'displacement'
+] as const
+export type RangeFilterDefinitionId =
+  (typeof RANGE_FILTER_DEFINITION_IDS)[number]
 
 export type AppliedFilterKind =
   | 'category'
@@ -116,7 +135,10 @@ interface BaseFilterDefinition {
 export interface MultiFilterDefinition extends BaseFilterDefinition {
   type: 'multi'
   stateKey: MultiFilterStateKey
-  appliedKind: Extract<AppliedFilterKind, 'marke' | 'model' | 'bodyType' | 'fuel' | 'financing' | 'extra'>
+  appliedKind: Extract<
+    AppliedFilterKind,
+    'marke' | 'model' | 'bodyType' | 'fuel' | 'financing' | 'extra'
+  >
   appliedLabel: string
   placeholder: string
   emptyText: string
@@ -129,7 +151,13 @@ export interface SingleFilterDefinition extends BaseFilterDefinition {
   stateKey: SingleFilterStateKey
   appliedKind: Extract<
     AppliedFilterKind,
-    'category' | 'location' | 'radius' | 'transmission' | 'condition' | 'doors' | 'seats'
+    | 'category'
+    | 'location'
+    | 'radius'
+    | 'transmission'
+    | 'condition'
+    | 'doors'
+    | 'seats'
   >
   appliedLabel: string
   placeholder: string
@@ -141,8 +169,14 @@ export interface RangeFilterDefinition extends BaseFilterDefinition {
   type: 'range'
   fromKey: RangeFromStateKey
   toKey: RangeToStateKey
-  fromKind: Extract<AppliedFilterKind, 'yearFrom' | 'kilometerFrom' | 'powerFrom' | 'displacementFrom'>
-  toKind: Extract<AppliedFilterKind, 'yearTo' | 'kilometerTo' | 'powerTo' | 'displacementTo'>
+  fromKind: Extract<
+    AppliedFilterKind,
+    'yearFrom' | 'kilometerFrom' | 'powerFrom' | 'displacementFrom'
+  >
+  toKind: Extract<
+    AppliedFilterKind,
+    'yearTo' | 'kilometerTo' | 'powerTo' | 'displacementTo'
+  >
   fromLabel: string
   toLabel: string
 }
