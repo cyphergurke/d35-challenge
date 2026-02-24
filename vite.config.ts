@@ -25,6 +25,19 @@ export default defineConfig({
     }
   },
   build: {
-    target: 'es2019'
+    target: 'es2019',
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/widget.js',
+        chunkFileNames: 'assets/chunks/[name]-[hash].js',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name?.endsWith('.css')) {
+            return 'assets/widget.css'
+          }
+
+          return 'assets/[name]-[hash][extname]'
+        }
+      }
+    }
   }
 })
