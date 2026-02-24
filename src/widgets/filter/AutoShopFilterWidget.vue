@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { SlidersHorizontal } from 'lucide-vue-next'
+import { ConfigProvider } from 'reka-ui'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from '@/components/ui/sheet'
 import { useFilterUrlSync } from '@/widgets/filter/composables/useFilterUrlSync'
 import { useFilterState } from '@/widgets/filter/composables/useFilterState'
 import ResultsPanel from './results/ResultsPanel.vue'
@@ -199,6 +209,7 @@ const extrasMultiDefinition = requireMultiDefinition(
 
 const isExtrasDialogOpen = ref(false)
 const isGuidedSearchOpen = ref(false)
+const isFilterSheetOpen = ref(false)
 const extrasSearch = ref('')
 const aiSearchQuery = ref('')
 const resultsPage = ref(1)
@@ -219,6 +230,44 @@ const filteredExtraOptions = computed(() => {
 const isAiSearchDisabled = computed(
   () => aiSearchQuery.value.trim().length === 0
 )
+const activeFilterCount = computed(() => appliedFilters.value.length)
+const filterAccordionPanelProps = computed(() => ({
+  state,
+  rateViewOptions,
+  budgetDefinition: budgetFilterDefinition,
+  categoryDefinition,
+  markeDefinition,
+  modelDefinition,
+  yearDefinition,
+  kilometerDefinition,
+  powerDefinition,
+  displacementDefinition,
+  conditionDefinition,
+  fuelDefinition,
+  transmissionDefinition,
+  yearOptions,
+  kilometerOptions,
+  powerOptions,
+  displacementOptions,
+  yearToOptions: yearToOptions.value,
+  kilometerToOptions: kilometerToOptions.value,
+  powerToOptions: powerToOptions.value,
+  displacementToOptions: displacementToOptions.value,
+  isKilometerToDisabled: isKilometerToDisabled.value,
+  getMultiValue,
+  setMultiValue,
+  getSingleValue,
+  setSingleValue,
+  getRangeValue,
+  setRangeValue,
+  setRateView,
+  clearDefinition,
+  clearAllFilters,
+  setMinPrice,
+  setMaxPrice,
+  handlePriceKeydown,
+  handlePricePaste
+}))
 
 interface SearchRequestedDetail {
   source: 'guided-search' | 'results-page' | 'results-sort' | 'saved-search'
@@ -255,6 +304,11 @@ function runAiSearch(): void {
       bubbles: true
     })
   )
+}
+
+function openExtrasDialog(): void {
+  isFilterSheetOpen.value = false
+  isExtrasDialogOpen.value = true
 }
 
 function dispatchSearchRequested(
@@ -317,44 +371,12 @@ function handleApplySavedSearch(payload: {
       <div
         class="mx-auto grid w-full max-w-[1320px] gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start"
       >
-        <FilterAccordionPanel
-          :state="state"
-          :rate-view-options="rateViewOptions"
-          :budget-definition="budgetFilterDefinition"
-          :category-definition="categoryDefinition"
-          :marke-definition="markeDefinition"
-          :model-definition="modelDefinition"
-          :year-definition="yearDefinition"
-          :kilometer-definition="kilometerDefinition"
-          :power-definition="powerDefinition"
-          :displacement-definition="displacementDefinition"
-          :condition-definition="conditionDefinition"
-          :fuel-definition="fuelDefinition"
-          :transmission-definition="transmissionDefinition"
-          :year-options="yearOptions"
-          :kilometer-options="kilometerOptions"
-          :power-options="powerOptions"
-          :displacement-options="displacementOptions"
-          :year-to-options="yearToOptions"
-          :kilometer-to-options="kilometerToOptions"
-          :power-to-options="powerToOptions"
-          :displacement-to-options="displacementToOptions"
-          :is-kilometer-to-disabled="isKilometerToDisabled"
-          :get-multi-value="getMultiValue"
-          :set-multi-value="setMultiValue"
-          :get-single-value="getSingleValue"
-          :set-single-value="setSingleValue"
-          :get-range-value="getRangeValue"
-          :set-range-value="setRangeValue"
-          :set-rate-view="setRateView"
-          :clear-definition="clearDefinition"
-          :clear-all-filters="clearAllFilters"
-          :set-min-price="setMinPrice"
-          :set-max-price="setMaxPrice"
-          :handle-price-keydown="handlePriceKeydown"
-          :handle-price-paste="handlePricePaste"
-          @open-extras="isExtrasDialogOpen = true"
-        />
+        <div class="hidden lg:block">
+          <FilterAccordionPanel
+            v-bind="filterAccordionPanelProps"
+            @open-extras="openExtrasDialog"
+          />
+        </div>
 
         <div class="min-w-0 space-y-3">
           <Card
@@ -410,6 +432,40 @@ function handleApplySavedSearch(payload: {
           />
         </div>
       </div>
+
+      <ConfigProvider :scroll-body="{ padding: 0, margin: 0 }">
+        <Sheet v-model:open="isFilterSheetOpen">
+          <SheetTrigger as-child>
+            <Button
+              class="fixed bottom-4 right-4 z-40 size-12 rounded-full bg-[#2f64c6] p-0 text-white shadow-lg hover:bg-[#2455ad] lg:hidden"
+            >
+              <SlidersHorizontal class="size-5" />
+              <span class="sr-only">Filter öffnen</span>
+              <span
+                v-if="activeFilterCount > 0"
+                class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#ef4f6b] px-1.5 py-0.5 text-[11px] font-semibold text-white"
+              >
+                {{ activeFilterCount }}
+              </span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side="left"
+            class="w-[min(92vw,360px)] overflow-y-auto border-r-[#c8d2de] bg-[#f7f9fc] p-3 sm:max-w-none"
+          >
+            <SheetHeader class="mb-3 px-1">
+              <SheetTitle>Filter</SheetTitle>
+              <SheetDescription>
+                Filtere Fahrzeuge auf mobilen Geraeten.
+              </SheetDescription>
+            </SheetHeader>
+            <FilterAccordionPanel
+              v-bind="filterAccordionPanelProps"
+              @open-extras="openExtrasDialog"
+            />
+          </SheetContent>
+        </Sheet>
+      </ConfigProvider>
     </CardContent>
   </Card>
 

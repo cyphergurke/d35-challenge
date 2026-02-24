@@ -60,14 +60,18 @@ const selectedPageSize = computed<string>({
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
-    <div class="flex items-center gap-2">
+  <div
+    class="flex min-w-0 flex-col gap-3 px-1 py-1 md:flex-row md:items-start md:justify-between"
+  >
+    <div class="flex min-w-0 flex-wrap items-center gap-2">
       <div class="flex items-center gap-1 text-xs text-[#6c7f99]">
         <SlidersHorizontal class="size-4" />
         <span>{{ totalCount }} Treffer</span>
       </div>
       <Select v-model="selectedSort">
-        <SelectTrigger class="h-9 min-w-[210px] bg-[#f6f8fc] text-[#1f2a3a]">
+        <SelectTrigger
+          class="h-9 w-full min-w-0 bg-[#f6f8fc] text-[#1f2a3a] sm:w-[210px]"
+        >
           <SelectValue placeholder="Sortieren" />
         </SelectTrigger>
         <SelectContent>
@@ -82,7 +86,9 @@ const selectedPageSize = computed<string>({
       </Select>
 
       <Select v-model="selectedPageSize">
-        <SelectTrigger class="h-9 min-w-[160px] bg-[#f6f8fc] text-[#1f2a3a]">
+        <SelectTrigger
+          class="h-9 w-full min-w-0 bg-[#f6f8fc] text-[#1f2a3a] sm:w-[160px]"
+        >
           <SelectValue placeholder="Pro Seite" />
         </SelectTrigger>
         <SelectContent>
@@ -97,7 +103,7 @@ const selectedPageSize = computed<string>({
       </Select>
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2 md:justify-end">
       <button
         type="button"
         class="inline-flex h-9 items-center gap-1 rounded-xl border px-3 text-sm transition"
