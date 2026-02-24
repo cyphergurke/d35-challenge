@@ -18,7 +18,7 @@ Empfohlene Struktur pro Widget:
 
 ```text
 src/widgets/<widget-name>/
-  AutoShopFilterWidget.vue
+  AutoShopSearchWidget.vue
   index.ts
   components/
   composables/
@@ -37,7 +37,7 @@ Zentrale Bausteine:
 
 Beispiel:
 
-- `src/widgets/filter/AutoShopFilterWidget.vue`
+- `src/widgets/filter/AutoShopSearchWidget.vue`
 
 Optional kann die Komponente Props wie `hostElement` oder widget-spezifische Props akzeptieren.
 
@@ -137,6 +137,6 @@ Alle neuen Widgets müssen diese Checks bestehen.
 Siehe vollständige Referenz:
 
 - `src/widgets/filter/index.ts`
-- `src/widgets/filter/AutoShopFilterWidget.vue`
+- `src/widgets/filter/AutoShopSearchWidget.vue`
 - `src/widgets/adapter/createWidgetAdapter.ts`
 - `src/utils/hostSlot.ts`

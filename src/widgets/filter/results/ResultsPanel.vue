@@ -18,6 +18,8 @@ import type { AppliedFilter, FilterState } from '@/widgets/filter/types/filters'
 
 interface Props {
   filterState: FilterState
+  sortKey: SortKey
+  page: number
   appliedFilters?: AppliedFilter[]
   onClearAll: () => void
   onRemoveFilter: (filter: AppliedFilter) => void
@@ -35,8 +37,6 @@ const emit = defineEmits<{
   ): void
 }>()
 
-const sortKey = ref<SortKey>('relevance')
-const page = ref(1)
 const pageSize = ref(12)
 const favorites = ref<Set<string>>(new Set())
 const showFavoritesOnly = ref(false)
@@ -57,6 +57,8 @@ interface SearchDialogExposed {
 
 const searchDialogRef = ref<SearchDialogExposed | null>(null)
 const filterStateRef = toRef(props, 'filterState')
+const sortKeyRef = toRef(props, 'sortKey')
+const pageRef = toRef(props, 'page')
 
 const {
   pagedItems,
@@ -69,8 +71,8 @@ const {
   toggleFavorite
 } = useResults({
   filterState: filterStateRef,
-  sortKey,
-  page,
+  sortKey: sortKeyRef,
+  page: pageRef,
   pageSize,
   favorites,
   favoritesOnly: showFavoritesOnly
@@ -133,9 +135,6 @@ function handleApplySavedSearch(payload: {
   filters: FilterState
   sortKey: SortKey
 }): void {
-  sortKey.value = payload.sortKey
-  page.value = 1
-
   emit('apply-saved-search', {
     filters: cloneFilterState(payload.filters),
     sortKey: payload.sortKey
@@ -193,15 +192,12 @@ const visiblePages = computed<
 watch(
   () => props.filterState,
   () => {
-    page.value = 1
+    if (props.page !== 1) {
+      emit('page-change', 1)
+    }
   },
   { deep: true }
 )
-
-watch(sortKey, (value) => {
-  page.value = 1
-  emit('sort-change', value)
-})
 
 watch(pageSize, (value) => {
   if (value <= 0 || value % 3 !== 0) {
@@ -214,16 +210,10 @@ watch(pageSize, (value) => {
     return
   }
 
-  page.value = 1
+  if (props.page !== 1) {
+    emit('page-change', 1)
+  }
 })
-
-watch(
-  currentPage,
-  (value) => {
-    emit('page-change', value)
-  },
-  { immediate: true }
-)
 
 watch(
   favoritesCount,
@@ -238,7 +228,7 @@ watch(favorites, (value) => {
 })
 
 watch(
-  [() => props.filterState, sortKey, page, pageSize],
+  [() => props.filterState, () => props.sortKey, () => props.page, pageSize],
   () => {
     if (loadingTimer !== null) {
       window.clearTimeout(loadingTimer)
@@ -265,12 +255,16 @@ onBeforeUnmount(() => {
 
 function setPage(nextPage: number): void {
   if (totalPages.value === 0) {
-    page.value = 1
+    if (props.page !== 1) {
+      emit('page-change', 1)
+    }
     return
   }
 
   const clampedPage = Math.min(Math.max(nextPage, 1), totalPages.value)
-  page.value = clampedPage
+  if (clampedPage !== props.page) {
+    emit('page-change', clampedPage)
+  }
 }
 
 function previousPage(): void {
@@ -283,7 +277,9 @@ function nextPage(): void {
 
 function toggleFavoritesOnly(): void {
   showFavoritesOnly.value = !showFavoritesOnly.value
-  page.value = 1
+  if (props.page !== 1) {
+    emit('page-change', 1)
+  }
 }
 </script>
 
@@ -291,13 +287,14 @@ function toggleFavoritesOnly(): void {
   <section class="space-y-3">
     <div class="rounded-2xl border border-[#c8d2de] bg-white p-3">
       <ResultsToolbar
-        v-model:sort-key="sortKey"
         v-model:page-size="pageSize"
+        :sort-key="sortKey"
         :sort-options="RESULT_SORT_OPTIONS"
         :favorites-count="favoritesCount"
         :show-favorites-only="showFavoritesOnly"
         :total-count="totalCount"
         :page-size-options="pageSizeOptions"
+        @update:sort-key="(value) => emit('sort-change', value)"
         @toggle-favorites-only="toggleFavoritesOnly"
         @open-search-alert="openSearchAlertDialog"
         @save-search="handleSaveSearch"

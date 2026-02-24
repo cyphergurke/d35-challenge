@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Sonner } from '@/components/ui/sonner'
-import AutoShopFilterWidget from './widgets/filter/AutoShopFilterWidget.vue'
+import AutoShopSearchWidget from './widgets/filter/AutoShopSearchWidget.vue'
 </script>
 
 <template>
-  <AutoShopFilterWidget />
+  <AutoShopSearchWidget />
   <Sonner />
 </template>
