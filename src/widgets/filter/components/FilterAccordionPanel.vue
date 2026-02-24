@@ -41,6 +41,7 @@ interface Props {
   rateViewOptions: readonly RateViewOption[]
   budgetDefinition: PriceFilterDefinition
   categoryDefinition: SingleFilterDefinition
+  bodyTypeDefinition: MultiFilterDefinition
   markeDefinition: MultiFilterDefinition
   modelDefinition: MultiFilterDefinition
   yearDefinition: RangeFilterDefinition
@@ -152,7 +153,7 @@ const modelPlaceholder = computed(() =>
 const markeModelCount = computed(
   () => props.state.marke.length + props.state.model.length
 )
-const categoryCount = computed(() => (props.state.category ? 1 : 0))
+const bodyTypeCount = computed(() => props.state.bodyType.length)
 const yearCount = computed(
   () => Number(Boolean(props.state.yearFrom)) + Number(Boolean(props.state.yearTo))
 )
@@ -289,28 +290,30 @@ function resetMarkeModel(): void {
         </AccordionContent>
       </AccordionItem>
 
-      <AccordionItem value="category" class="border-[#d6dfeb]">
-        <FilterRowHeader label="Kategorie" :active-count="categoryCount" />
+      <AccordionItem value="body-type" class="border-[#d6dfeb]">
+        <FilterRowHeader label="Karosserie" :active-count="bodyTypeCount" />
         <AccordionContent class="px-1">
           <div class="space-y-3">
-            <div v-if="categoryCount > 0" class="flex justify-end">
+            <div v-if="bodyTypeCount > 0" class="flex justify-end">
               <Button
                 variant="ghost"
                 size="sm"
                 class="h-7 px-2 text-xs text-[#556985] hover:bg-[#e9edf3]"
-                @click="clearDefinition(categoryDefinition.id)"
+                @click="clearDefinition(bodyTypeDefinition.id)"
               >
                 Zurücksetzen
               </Button>
             </div>
-            <SelectFilter
-              :label="categoryDefinition.label"
-              :placeholder="categoryDefinition.placeholder"
-              :options="categoryDefinition.options"
+            <MultiSelectFilter
+              :label="bodyTypeDefinition.label"
+              :placeholder="bodyTypeDefinition.placeholder"
+              :empty-text="bodyTypeDefinition.emptyText"
+              :options="bodyTypeDefinition.options"
               :show-clear="false"
               title-class="sr-only"
-              :model-value="getSingleValue(categoryDefinition.stateKey)"
-              @update:model-value="(value) => setSingleValue(categoryDefinition.stateKey, value)"
+              :show-chips="bodyTypeDefinition.showChips ?? true"
+              :model-value="getMultiValue(bodyTypeDefinition.stateKey)"
+              @update:model-value="(value) => setMultiValue(bodyTypeDefinition.stateKey, value)"
             />
           </div>
         </AccordionContent>
