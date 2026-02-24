@@ -1,4 +1,9 @@
-export type SortKey = 'relevance' | 'priceAsc' | 'priceDesc' | 'newest' | 'mileageAsc'
+export type SortKey =
+  | 'relevance'
+  | 'priceAsc'
+  | 'priceDesc'
+  | 'newest'
+  | 'mileageAsc'
 
 export interface SortOption {
   key: SortKey

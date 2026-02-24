@@ -13,7 +13,8 @@ const ATTRIBUTE_TO_PROP_MAP = {
   'padding-x': 'paddingX',
   'padding-top': 'paddingTop',
   'padding-bottom': 'paddingBottom',
-  'pages-search-filter-enforced-manufacturer': 'pagesSearchFilterEnforcedManufacturer',
+  'pages-search-filter-enforced-manufacturer':
+    'pagesSearchFilterEnforcedManufacturer',
   'search-filter-enforced-vehicle-types': 'searchFilterEnforcedVehicleTypes',
   'enforced-vehicle-request-parameters': 'enforcedVehicleRequestParameters',
   'script-urls': 'scriptUrls',

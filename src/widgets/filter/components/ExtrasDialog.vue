@@ -73,13 +73,11 @@ function removeExtra(value: string): void {
         class="fixed left-1/2 top-1/2 z-50 w-[min(760px,95vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[#c8d2de] bg-[#f7f9fc] p-4 shadow-xl focus:outline-none"
       >
         <div class="flex items-center justify-between">
-          <DialogTitle class="text-[24px] leading-none text-[#2a3342]">Auto extras</DialogTitle>
+          <DialogTitle class="text-[24px] leading-none text-[#2a3342]"
+            >Auto extras</DialogTitle
+          >
           <DialogClose as-child>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              class="rounded-full"
-            >
+            <Button variant="ghost" size="icon-sm" class="rounded-full">
               <X class="size-4 text-[#2a3342]" />
             </Button>
           </DialogClose>
@@ -123,24 +121,28 @@ function removeExtra(value: string): void {
                   :model-value="searchValue"
                   class="w-full pl-9 pr-3"
                   placeholder="Extras suchen"
-                  @update:model-value="(value) => emit('update:searchValue', String(value))"
+                  @update:model-value="
+                    (value) => emit('update:searchValue', String(value))
+                  "
                 />
-                <span class="pointer-events-none absolute start-0 inset-y-0 flex items-center justify-center px-3">
+                <span
+                  class="pointer-events-none absolute start-0 inset-y-0 flex items-center justify-center px-3"
+                >
                   <Search class="size-4 text-muted-foreground" />
                 </span>
               </div>
 
-              <div
-                v-if="extrasValue.length > 0"
-                class="flex flex-wrap gap-2"
-              >
+              <div v-if="extrasValue.length > 0" class="flex flex-wrap gap-2">
                 <Badge
                   v-for="value in extrasValue"
                   :key="`selected-extra-${value}`"
                   variant="secondary"
                   class="rounded-full border border-[#c3cddd] bg-[#eaf0f7] px-2.5 py-0.5 text-xs font-medium text-[#243145]"
                 >
-                  {{ extraOptions.find((option) => option.value === value)?.label ?? value }}
+                  {{
+                    extraOptions.find((option) => option.value === value)
+                      ?.label ?? value
+                  }}
                   <button
                     type="button"
                     class="inline-flex items-center rounded-full p-0.5 transition hover:bg-[#d8e2ef]"
@@ -151,7 +153,9 @@ function removeExtra(value: string): void {
                 </Badge>
               </div>
 
-              <div class="max-h-[46vh] overflow-y-auto rounded-lg border border-[#d3dbe7] bg-white p-1">
+              <div
+                class="max-h-[46vh] overflow-y-auto rounded-lg border border-[#d3dbe7] bg-white p-1"
+              >
                 <button
                   v-for="option in filteredExtraOptions"
                   :key="option.id"
@@ -162,7 +166,11 @@ function removeExtra(value: string): void {
                   <span class="text-sm text-[#2a3342]">{{ option.label }}</span>
                   <Check
                     class="size-4"
-                    :class="extrasValue.includes(option.value) ? 'opacity-100 text-[#2a3342]' : 'opacity-0'"
+                    :class="
+                      extrasValue.includes(option.value)
+                        ? 'opacity-100 text-[#2a3342]'
+                        : 'opacity-0'
+                    "
                   />
                 </button>
                 <p
