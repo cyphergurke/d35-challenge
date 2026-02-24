@@ -4,7 +4,10 @@ export interface FilterOption {
   value: string
 }
 
+export type RateViewValue = 'financing' | 'leasing' | 'subscription'
+
 export interface FilterValueMap {
+  rateView: RateViewValue
   category: string | undefined
   location: string | undefined
   radius: string | undefined

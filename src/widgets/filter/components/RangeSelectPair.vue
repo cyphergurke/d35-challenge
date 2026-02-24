@@ -20,13 +20,17 @@ interface Props {
   toOptions: FilterOption[]
   toDisabled?: boolean
   toPlaceholder?: string
+  showClear?: boolean
+  titleClass?: string
 }
 
 withDefaults(defineProps<Props>(), {
   fromLabel: 'Von',
   toLabel: 'Bis',
   toDisabled: false,
-  toPlaceholder: 'Bis'
+  toPlaceholder: 'Bis',
+  showClear: true,
+  titleClass: 'text-[20px] font-semibold text-[#2a3342]'
 })
 
 const emit = defineEmits<{
@@ -47,7 +51,8 @@ function toStringOrUndefined(value: AcceptableValue): string | undefined {
 <template>
   <FilterSection
     :label="label"
-    :can-clear="Boolean(fromValue || toValue)"
+    :title-class="titleClass"
+    :can-clear="showClear && Boolean(fromValue || toValue)"
     @clear="emit('clear')"
   >
     <div class="grid grid-cols-2 gap-2">

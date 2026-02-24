@@ -2,6 +2,7 @@ import type { FilterState } from '@/widgets/filter/types/filters'
 
 export function cloneFilterState(source: FilterState): FilterState {
   return {
+    rateView: source.rateView,
     category: source.category,
     location: source.location,
     radius: source.radius,

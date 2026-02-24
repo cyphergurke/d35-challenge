@@ -23,11 +23,13 @@ interface Props {
   options: FilterOption[]
   modelValue: string[]
   showChips?: boolean
+  showClear?: boolean
   titleClass?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showChips: true,
+  showClear: true,
   titleClass: 'text-[20px] font-semibold text-[#2a3342]'
 })
 
@@ -63,7 +65,7 @@ function removeSelected(value: string): void {
   <FilterSection
     :label="label"
     :title-class="titleClass"
-    :can-clear="modelValue.length > 0"
+    :can-clear="showClear && modelValue.length > 0"
     @clear="clearSelected"
   >
     <Combobox

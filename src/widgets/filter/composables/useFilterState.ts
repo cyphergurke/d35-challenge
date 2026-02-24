@@ -7,7 +7,10 @@ import type {
   MultiFilterDefinition,
   MultiFilterStateKey,
   PriceFilterDefinition,
+  RangeFromStateKey,
   RangeFilterDefinition,
+  RangeToStateKey,
+  RateViewValue,
   SingleFilterDefinition,
   SingleFilterStateKey
 } from '@/widgets/filter/types/filters'
@@ -40,6 +43,7 @@ import {
 } from '@/widgets/filter/utils/helpers'
 
 const INITIAL_FILTER_STATE: FilterState = {
+  rateView: 'financing',
   category: '',
   location: undefined,
   radius: undefined,
@@ -296,6 +300,12 @@ const FILTER_DEFINITIONS: readonly FilterDefinition[] = [
   }
 ]
 
+const RATE_VIEW_OPTIONS: readonly { value: RateViewValue; label: string }[] = [
+  { value: 'financing', label: 'Finanzierungsraten' },
+  { value: 'leasing', label: 'Leasingraten' },
+  { value: 'subscription', label: 'Abo-Raten' }
+]
+
 function createFilterState(): FilterState {
   return cloneFilterState(INITIAL_FILTER_STATE)
 }
@@ -327,6 +337,7 @@ function sortByReadonlyOrder<T extends { order: number }>(
 export interface UseFilterStateResult {
   definitions: readonly FilterDefinition[]
   state: FilterState
+  rateViewOptions: readonly { value: RateViewValue; label: string }[]
   appliedFilters: ComputedRef<AppliedFilter[]>
   budgetDefinition: ComputedRef<PriceFilterDefinition | undefined>
   budgetSingleDefinitions: ComputedRef<SingleFilterDefinition[]>
@@ -365,6 +376,14 @@ export interface UseFilterStateResult {
     stateKey: SingleFilterStateKey,
     value: string | undefined
   ) => void
+  getRangeValue: (
+    stateKey: RangeFromStateKey | RangeToStateKey
+  ) => string | undefined
+  setRangeValue: (
+    stateKey: RangeFromStateKey | RangeToStateKey,
+    value: string | undefined
+  ) => void
+  setRateView: (value: RateViewValue) => void
   clearDefinition: (definitionId: FilterDefinition['id']) => void
   clearAllFilters: () => void
   removeAppliedFilter: (filter: AppliedFilter) => void
@@ -555,6 +574,23 @@ export function useFilterState(): UseFilterStateResult {
     state[stateKey] = value
   }
 
+  function getRangeValue(
+    stateKey: RangeFromStateKey | RangeToStateKey
+  ): string | undefined {
+    return state[stateKey]
+  }
+
+  function setRangeValue(
+    stateKey: RangeFromStateKey | RangeToStateKey,
+    value: string | undefined
+  ): void {
+    state[stateKey] = value
+  }
+
+  function setRateView(value: RateViewValue): void {
+    state.rateView = value
+  }
+
   function createSnapshot(): FilterState {
     return cloneFilterState(state)
   }
@@ -590,9 +626,7 @@ export function useFilterState(): UseFilterStateResult {
   }
 
   function clearAllFilters(): void {
-    for (const definition of FILTER_DEFINITIONS) {
-      clearDefinition(definition.id)
-    }
+    Object.assign(state, createFilterState())
   }
 
   function removeAppliedFilter(filter: AppliedFilter): void {
@@ -723,6 +757,7 @@ export function useFilterState(): UseFilterStateResult {
   return {
     definitions: FILTER_DEFINITIONS,
     state,
+    rateViewOptions: RATE_VIEW_OPTIONS,
     appliedFilters,
     budgetDefinition,
     budgetSingleDefinitions,
@@ -754,6 +789,9 @@ export function useFilterState(): UseFilterStateResult {
     clearMultiValue,
     getSingleValue,
     setSingleValue,
+    getRangeValue,
+    setRangeValue,
+    setRateView,
     clearDefinition,
     clearAllFilters,
     removeAppliedFilter,

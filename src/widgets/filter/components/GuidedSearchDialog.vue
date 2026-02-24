@@ -248,7 +248,7 @@ function toggleExtra(extra: string): void {
         <div class="flex items-center justify-between gap-4">
           <div>
             <DialogTitle class="text-[26px] text-[#2a3342]"
-              >Start Guided Search</DialogTitle
+              >Geführte Suche starten</DialogTitle
             >
             <DialogDescription class="mt-1 text-sm text-[#5f6f87]">
               Schritt {{ currentStepIndex + 1 }} von {{ steps.length }}:
@@ -596,7 +596,7 @@ function toggleExtra(extra: string): void {
             class="border-[#c3cfdd] bg-white text-[#2a3342]"
             @click="goBack"
           >
-            Zurueck
+            Zurück
           </Button>
           <Button
             v-if="canSkip"

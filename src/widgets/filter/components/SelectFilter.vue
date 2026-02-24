@@ -15,10 +15,12 @@ interface Props {
   placeholder: string
   options: FilterOption[]
   modelValue: string | undefined
+  showClear?: boolean
   titleClass?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  showClear: true,
   titleClass: 'text-[20px] font-semibold text-[#2a3342]'
 })
 
@@ -40,7 +42,7 @@ function clearSelected(): void {
   <FilterSection
     :label="label"
     :title-class="titleClass"
-    :can-clear="Boolean(modelValue)"
+    :can-clear="showClear && Boolean(modelValue)"
     @clear="clearSelected"
   >
     <Select v-model="selectedValue">
