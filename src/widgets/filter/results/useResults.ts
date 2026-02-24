@@ -4,7 +4,7 @@ import type { CarListing, SortKey } from '@/widgets/filter/results/types'
 import type { FilterState } from '@/widgets/filter/types/filters'
 
 interface UseResultsParams {
-  filterState: FilterState
+  filterState: Ref<FilterState>
   sortKey: Ref<SortKey>
   page: Ref<number>
   pageSize: Ref<number>
@@ -33,10 +33,6 @@ function parseNumber(value: string | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-function hasIntersection(selected: string[], values: string[]): boolean {
-  return selected.some((entry) => values.includes(entry))
-}
-
 function toTimestamp(input: string): number {
   const timestamp = Date.parse(input)
   return Number.isFinite(timestamp) ? timestamp : 0
@@ -44,9 +40,21 @@ function toTimestamp(input: string): number {
 
 export function useResults(params: UseResultsParams): UseResultsReturn {
   const sourceItems = params.sourceItems ?? mockListings
+  const listingStaticIndexById = new Map<
+    string,
+    { createdAtTs: number; extras: ReadonlySet<string> }
+  >(
+    sourceItems.map((item) => [
+      item.id,
+      {
+        createdAtTs: toTimestamp(item.createdAt),
+        extras: new Set(item.extras)
+      }
+    ])
+  )
 
   const filteredItems = computed<CarListing[]>(() => {
-    const state = params.filterState
+    const state = params.filterState.value
     const minPrice = parseNumber(state.minPrice)
     const maxPrice = parseNumber(state.maxPrice)
     const yearFrom = parseNumber(state.yearFrom)
@@ -58,33 +66,44 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
     const displacementFrom = parseNumber(state.displacementFrom)
     const displacementTo = parseNumber(state.displacementTo)
     const seats = parseNumber(state.seats)
+    const selectedMarkeSet = state.marke.length > 0 ? new Set(state.marke) : null
+    const selectedModelSet = state.model.length > 0 ? new Set(state.model) : null
+    const selectedBodyTypeSet =
+      state.bodyType.length > 0 ? new Set(state.bodyType) : null
+    const selectedFuelSet = state.fuel.length > 0 ? new Set(state.fuel) : null
+    const selectedFinancingSet =
+      state.financing.length > 0 ? new Set(state.financing) : null
+    const selectedExtras = state.extras
 
     return sourceItems.filter((item) => {
       if (state.category && item.category !== state.category) {
         return false
       }
 
-      if (state.location && item.location && item.location !== state.location) {
+      if (state.location && item.location !== state.location) {
         return false
       }
 
-      if (state.marke.length > 0 && !state.marke.includes(item.make)) {
+      if (selectedMarkeSet && !selectedMarkeSet.has(item.make)) {
         return false
       }
 
-      if (state.model.length > 0 && !state.model.includes(item.model)) {
+      if (selectedModelSet && !selectedModelSet.has(item.model)) {
         return false
       }
 
-      if (state.bodyType.length > 0 && !state.bodyType.includes(item.bodyType)) {
+      if (selectedBodyTypeSet && !selectedBodyTypeSet.has(item.bodyType)) {
         return false
       }
 
-      if (state.fuel.length > 0 && !state.fuel.includes(item.fuel)) {
+      if (selectedFuelSet && !selectedFuelSet.has(item.fuel)) {
         return false
       }
 
-      if (state.financing.length > 0 && !hasIntersection(state.financing, item.financingOptions)) {
+      if (
+        selectedFinancingSet &&
+        !item.financingOptions.some((option) => selectedFinancingSet.has(option))
+      ) {
         return false
       }
 
@@ -120,11 +139,17 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
         return false
       }
 
-      if (displacementFrom !== undefined && item.displacementCcm < displacementFrom) {
+      if (
+        displacementFrom !== undefined &&
+        item.displacementCcm < displacementFrom
+      ) {
         return false
       }
 
-      if (displacementTo !== undefined && item.displacementCcm > displacementTo) {
+      if (
+        displacementTo !== undefined &&
+        item.displacementCcm > displacementTo
+      ) {
         return false
       }
 
@@ -144,10 +169,16 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
         return false
       }
 
-      if (state.extras.length > 0) {
-        const hasAllExtras = state.extras.every((extra) => item.extras.includes(extra))
-        if (!hasAllExtras) {
+      if (selectedExtras.length > 0) {
+        const itemExtrasSet = listingStaticIndexById.get(item.id)?.extras
+        if (!itemExtrasSet) {
           return false
+        }
+
+        for (const extra of selectedExtras) {
+          if (!itemExtrasSet.has(extra)) {
+            return false
+          }
         }
       }
 
@@ -175,7 +206,10 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
             return relevanceDiff
           }
 
-          return toTimestamp(right.createdAt) - toTimestamp(left.createdAt)
+          return (
+            (listingStaticIndexById.get(right.id)?.createdAtTs ?? 0) -
+            (listingStaticIndexById.get(left.id)?.createdAtTs ?? 0)
+          )
         }
       }
     })
@@ -186,7 +220,9 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
   const totalCount = computed(() => filteredItems.value.length)
   const totalPages = computed(() => {
     const safePageSize = Math.max(1, params.pageSize.value)
-    return totalCount.value === 0 ? 0 : Math.ceil(totalCount.value / safePageSize)
+    return totalCount.value === 0
+      ? 0
+      : Math.ceil(totalCount.value / safePageSize)
   })
 
   const currentPage = computed(() => {
