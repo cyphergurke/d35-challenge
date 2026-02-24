@@ -16,7 +16,10 @@ function delay(): Promise<void> {
 }
 
 function createId(prefix: string): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
     return `${prefix}-${crypto.randomUUID()}`
   }
 
@@ -46,7 +49,9 @@ function sanitizeName(name: string): string {
   return trimmed || 'Neue Suche'
 }
 
-export async function createSavedSearch(input: SavedSearchCreateInput): Promise<SavedSearch> {
+export async function createSavedSearch(
+  input: SavedSearchCreateInput
+): Promise<SavedSearch> {
   await delay()
 
   const now = getNowIso()
@@ -81,8 +86,11 @@ export async function updateSavedSearch(
 
   const nextEntry: SavedSearch = {
     ...previousEntry,
-    name: input.name !== undefined ? sanitizeName(input.name) : previousEntry.name,
-    query: input.query ? cloneSavedSearchQuery(input.query) : previousEntry.query,
+    name:
+      input.name !== undefined ? sanitizeName(input.name) : previousEntry.name,
+    query: input.query
+      ? cloneSavedSearchQuery(input.query)
+      : previousEntry.query,
     updatedAt: getNowIso()
   }
 

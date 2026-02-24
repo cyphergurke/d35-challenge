@@ -15,7 +15,10 @@ function delay(): Promise<void> {
 }
 
 function createId(prefix: string): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
     return `${prefix}-${crypto.randomUUID()}`
   }
 
@@ -43,7 +46,9 @@ function getNowIso(): string {
   return new Date().toISOString()
 }
 
-export async function createSearchAlert(input: SearchAlertCreateInput): Promise<SearchAlert> {
+export async function createSearchAlert(
+  input: SearchAlertCreateInput
+): Promise<SearchAlert> {
   await delay()
 
   const now = getNowIso()
@@ -93,7 +98,8 @@ export async function updateSearchAlert(
     savedSearchId: input.savedSearchId ?? previousEntry.savedSearchId,
     isActive: input.isActive ?? previousEntry.isActive,
     channel: input.channel ?? previousEntry.channel,
-    target: input.target !== undefined ? input.target.trim() : previousEntry.target,
+    target:
+      input.target !== undefined ? input.target.trim() : previousEntry.target,
     frequency: input.frequency ?? previousEntry.frequency,
     onlyOnNew: input.onlyOnNew ?? previousEntry.onlyOnNew,
     dedupeSeen: input.dedupeSeen ?? previousEntry.dedupeSeen,
@@ -136,7 +142,9 @@ export async function deleteSearchAlert(searchAlertId: string): Promise<void> {
   searchAlertStore.splice(entryIndex, 1)
 }
 
-export async function sendSearchAlertTest(searchAlertId: string): Promise<SearchAlert> {
+export async function sendSearchAlertTest(
+  searchAlertId: string
+): Promise<SearchAlert> {
   await delay()
 
   return updateSearchAlert(searchAlertId, { lastNotifiedAt: getNowIso() })

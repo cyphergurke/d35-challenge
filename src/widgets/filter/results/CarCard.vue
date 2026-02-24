@@ -41,13 +41,17 @@ const emit = defineEmits<{
 
 const priceText = computed(() => {
   const currencySymbol = props.model.price.currency === 'EUR' ? '€' : ''
-  const formatted = new Intl.NumberFormat('de-DE').format(props.model.price.amount)
+  const formatted = new Intl.NumberFormat('de-DE').format(
+    props.model.price.amount
+  )
   return `${formatted} ${currencySymbol}`.trim()
 })
 
 const monthlyRateText = computed(() => {
   if (!props.model.monthlyRate) return null
-  const formatted = new Intl.NumberFormat('de-DE').format(props.model.monthlyRate.amount)
+  const formatted = new Intl.NumberFormat('de-DE').format(
+    props.model.monthlyRate.amount
+  )
   return {
     amount: `ab ${formatted}€`,
     unit: props.model.monthlyRate.unitLabel
@@ -84,12 +88,18 @@ function onOpenDetails(event: MouseEvent): void {
       <button
         type="button"
         class="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-[rgba(0,0,0,0.75)] backdrop-blur transition hover:bg-white"
-        :aria-label="props.model.isFavorite ? 'Remove from favorites' : 'Add to favorites'"
+        :aria-label="
+          props.model.isFavorite ? 'Remove from favorites' : 'Add to favorites'
+        "
         @click="onToggleFavorite"
       >
         <Heart
           class="h-5 w-5"
-          :class="props.model.isFavorite ? 'fill-[rgba(0,0,0,0.75)]' : 'fill-transparent'"
+          :class="
+            props.model.isFavorite
+              ? 'fill-[rgba(0,0,0,0.75)]'
+              : 'fill-transparent'
+          "
         />
       </button>
 

@@ -2,7 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { BellRing, Bookmark, Mail, Save, Send, Trash2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
-import { deleteSavedSearch, listSavedSearches, createSavedSearch, updateSavedSearch } from '@/api/savedSearchApi'
+import {
+  deleteSavedSearch,
+  listSavedSearches,
+  createSavedSearch,
+  updateSavedSearch
+} from '@/api/savedSearchApi'
 import {
   createSearchAlert,
   deleteSearchAlert,
@@ -55,7 +60,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   (event: 'update:open', value: boolean): void
-  (event: 'apply-saved-search', payload: { filters: FilterState; sortKey: SortKey }): void
+  (
+    event: 'apply-saved-search',
+    payload: { filters: FilterState; sortKey: SortKey }
+  ): void
 }>()
 
 type DialogTab = 'alerts' | 'saved'
@@ -99,7 +107,9 @@ const sortedSavedSearches = computed(() => {
     return items
   }
 
-  items.sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
+  items.sort(
+    (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
+  )
   return items
 })
 
@@ -169,7 +179,9 @@ function formatRelativeDate(isoDate: string): string {
 }
 
 function getSearchChips(search: SavedSearch): string[] {
-  const labels = buildAppliedFiltersFromState(search.query.filters).map((item) => item.label)
+  const labels = buildAppliedFiltersFromState(search.query.filters).map(
+    (item) => item.label
+  )
   if (labels.length > 0) {
     return labels.slice(0, 4)
   }
@@ -247,7 +259,10 @@ function notifyError(message: string): void {
 }
 
 async function refreshData(): Promise<void> {
-  const [savedItems, alertItems] = await Promise.all([listSavedSearches(), listSearchAlerts()])
+  const [savedItems, alertItems] = await Promise.all([
+    listSavedSearches(),
+    listSearchAlerts()
+  ])
   savedSearches.value = savedItems
   searchAlerts.value = alertItems
   syncRenameDrafts(savedItems)
@@ -257,8 +272,11 @@ function loadAlertIntoForm(alert: SearchAlert): void {
   selectedAlertId.value = alert.id
   selectedSavedSearchId.value = alert.savedSearchId
 
-  const savedSearch = savedSearches.value.find((item) => item.id === alert.savedSearchId)
-  alertName.value = savedSearch?.name ?? buildSavedSearchName(props.currentFilters)
+  const savedSearch = savedSearches.value.find(
+    (item) => item.id === alert.savedSearchId
+  )
+  alertName.value =
+    savedSearch?.name ?? buildSavedSearchName(props.currentFilters)
   alertIsActive.value = alert.isActive
   alertChannel.value = alert.channel
   alertTarget.value = alert.target
@@ -287,7 +305,9 @@ async function initializeDialog(): Promise<void> {
     await refreshData()
 
     if (selectedAlertId.value) {
-      const activeAlert = searchAlerts.value.find((item) => item.id === selectedAlertId.value)
+      const activeAlert = searchAlerts.value.find(
+        (item) => item.id === selectedAlertId.value
+      )
       if (activeAlert) {
         loadAlertIntoForm(activeAlert)
         return
@@ -325,18 +345,26 @@ watch(
   { deep: true }
 )
 
-async function saveCurrentSearchRecord(preferredName?: string): Promise<SavedSearch> {
+async function saveCurrentSearchRecord(
+  preferredName?: string
+): Promise<SavedSearch> {
   const query = getCurrentQuery()
   const matchingByQuery = savedSearches.value.find(
     (item) => queryFingerprint(item.query) === queryFingerprint(query)
   )
 
   const selectedSavedSearch = selectedSavedSearchId.value
-    ? savedSearches.value.find((item) => item.id === selectedSavedSearchId.value)
+    ? savedSearches.value.find(
+        (item) => item.id === selectedSavedSearchId.value
+      )
     : undefined
 
   const existing = selectedSavedSearch ?? matchingByQuery
-  const resolvedName = (preferredName ?? existing?.name ?? buildSavedSearchName(query.filters)).trim()
+  const resolvedName = (
+    preferredName ??
+    existing?.name ??
+    buildSavedSearchName(query.filters)
+  ).trim()
 
   const nextSavedSearch = existing
     ? await updateSavedSearch(existing.id, { name: resolvedName, query })
@@ -429,14 +457,16 @@ async function handleUpsertAlert(): Promise<void> {
 
     await refreshData()
 
-    const refreshedAlert = searchAlerts.value.find((item) => item.id === alert.id)
+    const refreshedAlert = searchAlerts.value.find(
+      (item) => item.id === alert.id
+    )
     if (refreshedAlert) {
       loadAlertIntoForm(refreshedAlert)
     }
 
-    notifySuccess(isUpdate
-      ? 'Suchauftrag aktualisiert.'
-      : 'Suchauftrag erstellt.')
+    notifySuccess(
+      isUpdate ? 'Suchauftrag aktualisiert.' : 'Suchauftrag erstellt.'
+    )
   } catch {
     notifyError('Suchauftrag konnte nicht gespeichert werden.')
   } finally {
@@ -495,7 +525,9 @@ function handleApplySavedSearch(savedSearch: SavedSearch): void {
 }
 
 async function handleActivateAlert(savedSearch: SavedSearch): Promise<void> {
-  const existingAlert = searchAlerts.value.find((item) => item.savedSearchId === savedSearch.id)
+  const existingAlert = searchAlerts.value.find(
+    (item) => item.savedSearchId === savedSearch.id
+  )
   if (existingAlert) {
     activeTab.value = 'alerts'
     loadAlertIntoForm(existingAlert)
@@ -518,7 +550,9 @@ async function handleActivateAlert(savedSearch: SavedSearch): Promise<void> {
 
     await refreshData()
 
-    const refreshedAlert = searchAlerts.value.find((item) => item.id === created.id)
+    const refreshedAlert = searchAlerts.value.find(
+      (item) => item.id === created.id
+    )
     if (refreshedAlert) {
       loadAlertIntoForm(refreshedAlert)
     }
@@ -532,8 +566,12 @@ async function handleActivateAlert(savedSearch: SavedSearch): Promise<void> {
   }
 }
 
-async function handleRenameSavedSearch(savedSearch: SavedSearch): Promise<void> {
-  const draftName = (renameDrafts.value[savedSearch.id] ?? savedSearch.name).trim()
+async function handleRenameSavedSearch(
+  savedSearch: SavedSearch
+): Promise<void> {
+  const draftName = (
+    renameDrafts.value[savedSearch.id] ?? savedSearch.name
+  ).trim()
   if (!draftName || draftName === savedSearch.name) {
     return
   }
@@ -556,11 +594,15 @@ async function handleRenameSavedSearch(savedSearch: SavedSearch): Promise<void> 
   }
 }
 
-async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> {
+async function handleDeleteSavedSearch(
+  savedSearch: SavedSearch
+): Promise<void> {
   isMutating.value = true
 
   try {
-    const linkedAlerts = searchAlerts.value.filter((item) => item.savedSearchId === savedSearch.id)
+    const linkedAlerts = searchAlerts.value.filter(
+      (item) => item.savedSearchId === savedSearch.id
+    )
     for (const alert of linkedAlerts) {
       await deleteSearchAlert(alert.id)
     }
@@ -582,11 +624,10 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
 </script>
 
 <template>
-  <Dialog
-    :open="open"
-    @update:open="(value) => emit('update:open', value)"
-  >
-    <DialogScrollContent class="max-h-[92vh] max-w-[1100px] border-[#c8d2de] bg-[#f8fafd] p-0">
+  <Dialog :open="open" @update:open="(value) => emit('update:open', value)">
+    <DialogScrollContent
+      class="max-h-[92vh] max-w-[1100px] border-[#c8d2de] bg-[#f8fafd] p-0"
+    >
       <div class="space-y-4 p-5">
         <DialogHeader>
           <DialogTitle class="text-xl text-[#1f2a3a]">Suchauftrag</DialogTitle>
@@ -611,8 +652,12 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
             <section class="rounded-xl border border-[#c8d2de] bg-white p-4">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 class="text-base font-semibold text-[#22324a]">Aktuelle Suche</h3>
-                  <p class="text-sm text-[#607794]">Benachrichtigungsprofil fuer deine aktuelle Suche.</p>
+                  <h3 class="text-base font-semibold text-[#22324a]">
+                    Aktuelle Suche
+                  </h3>
+                  <p class="text-sm text-[#607794]">
+                    Benachrichtigungsprofil fuer deine aktuelle Suche.
+                  </p>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -637,14 +682,29 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
 
               <div class="mt-4 grid gap-3 md:grid-cols-2">
                 <div class="space-y-1.5">
-                  <label for="alert-name" class="text-xs font-medium text-[#48617f]">Name</label>
-                  <Input id="alert-name" v-model="alertName" class="border-[#d6dfeb]" />
+                  <label
+                    for="alert-name"
+                    class="text-xs font-medium text-[#48617f]"
+                    >Name</label
+                  >
+                  <Input
+                    id="alert-name"
+                    v-model="alertName"
+                    class="border-[#d6dfeb]"
+                  />
                 </div>
 
                 <div class="space-y-1.5">
-                  <label for="alert-channel" class="text-xs font-medium text-[#48617f]">Kanal</label>
+                  <label
+                    for="alert-channel"
+                    class="text-xs font-medium text-[#48617f]"
+                    >Kanal</label
+                  >
                   <Select v-model="alertChannel">
-                    <SelectTrigger id="alert-channel" class="border-[#d6dfeb] bg-white">
+                    <SelectTrigger
+                      id="alert-channel"
+                      class="border-[#d6dfeb] bg-white"
+                    >
                       <SelectValue placeholder="Kanal waehlen" />
                     </SelectTrigger>
                     <SelectContent>
@@ -655,41 +715,57 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
                 </div>
 
                 <div class="space-y-1.5 md:col-span-2">
-                  <label for="alert-target" class="text-xs font-medium text-[#48617f]">Empfaenger</label>
-                  <Input id="alert-target" v-model="alertTarget" class="border-[#d6dfeb]" />
+                  <label
+                    for="alert-target"
+                    class="text-xs font-medium text-[#48617f]"
+                    >Empfaenger</label
+                  >
+                  <Input
+                    id="alert-target"
+                    v-model="alertTarget"
+                    class="border-[#d6dfeb]"
+                  />
                 </div>
 
                 <fieldset class="space-y-2 md:col-span-2">
-                  <legend class="text-xs font-medium text-[#48617f]">Frequenz</legend>
+                  <legend class="text-xs font-medium text-[#48617f]">
+                    Frequenz
+                  </legend>
                   <div class="grid gap-2 md:grid-cols-3">
-                    <label class="flex items-center gap-2 rounded-lg border border-[#d4deea] p-2 text-sm text-[#2a3b53]">
+                    <label
+                      class="flex items-center gap-2 rounded-lg border border-[#d4deea] p-2 text-sm text-[#2a3b53]"
+                    >
                       <input
                         v-model="alertFrequency"
                         type="radio"
                         name="alert-frequency"
                         value="instant"
                         class="h-4 w-4"
-                      >
+                      />
                       Sofort (bei neuen Treffern)
                     </label>
-                    <label class="flex items-center gap-2 rounded-lg border border-[#d4deea] p-2 text-sm text-[#2a3b53]">
+                    <label
+                      class="flex items-center gap-2 rounded-lg border border-[#d4deea] p-2 text-sm text-[#2a3b53]"
+                    >
                       <input
                         v-model="alertFrequency"
                         type="radio"
                         name="alert-frequency"
                         value="daily"
                         class="h-4 w-4"
-                      >
+                      />
                       1x taeglich
                     </label>
-                    <label class="flex items-center gap-2 rounded-lg border border-[#d4deea] p-2 text-sm text-[#2a3b53]">
+                    <label
+                      class="flex items-center gap-2 rounded-lg border border-[#d4deea] p-2 text-sm text-[#2a3b53]"
+                    >
                       <input
                         v-model="alertFrequency"
                         type="radio"
                         name="alert-frequency"
                         value="weekly"
                         class="h-4 w-4"
-                      >
+                      />
                       1x woechentlich
                     </label>
                   </div>
@@ -697,19 +773,39 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
 
                 <div class="space-y-2 md:col-span-2">
                   <label class="flex items-start gap-2 text-sm text-[#2a3b53]">
-                    <Checkbox :checked="alertOnlyOnNew" @update:checked="setOnlyOnNew" />
-                    <span>Nur benachrichtigen, wenn neue Inserate hinzugekommen sind.</span>
+                    <Checkbox
+                      :checked="alertOnlyOnNew"
+                      @update:checked="setOnlyOnNew"
+                    />
+                    <span
+                      >Nur benachrichtigen, wenn neue Inserate hinzugekommen
+                      sind.</span
+                    >
                   </label>
                   <label class="flex items-start gap-2 text-sm text-[#2a3b53]">
-                    <Checkbox :checked="alertDedupeSeen" @update:checked="setDedupeSeen" />
-                    <span>Keine Benachrichtigung fuer Anzeigen, die du bereits gesehen hast.</span>
+                    <Checkbox
+                      :checked="alertDedupeSeen"
+                      @update:checked="setDedupeSeen"
+                    />
+                    <span
+                      >Keine Benachrichtigung fuer Anzeigen, die du bereits
+                      gesehen hast.</span
+                    >
                   </label>
                 </div>
 
-                <details class="rounded-lg border border-[#d4deea] p-3 md:col-span-2">
-                  <summary class="cursor-pointer text-sm font-medium text-[#35507a]">Erweitert: Ruhezeiten</summary>
+                <details
+                  class="rounded-lg border border-[#d4deea] p-3 md:col-span-2"
+                >
+                  <summary
+                    class="cursor-pointer text-sm font-medium text-[#35507a]"
+                  >
+                    Erweitert: Ruhezeiten
+                  </summary>
                   <div class="mt-3 space-y-3">
-                    <label class="flex items-start gap-2 text-sm text-[#2a3b53]">
+                    <label
+                      class="flex items-start gap-2 text-sm text-[#2a3b53]"
+                    >
                       <Checkbox
                         :checked="alertQuietHoursEnabled"
                         @update:checked="setQuietHoursEnabled"
@@ -719,15 +815,31 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
 
                     <div class="grid gap-2 md:grid-cols-3">
                       <div class="space-y-1">
-                        <label for="quiet-start" class="text-xs text-[#5e7696]">Von</label>
-                        <Input id="quiet-start" v-model="alertQuietStart" type="time" :disabled="!alertQuietHoursEnabled" />
+                        <label for="quiet-start" class="text-xs text-[#5e7696]"
+                          >Von</label
+                        >
+                        <Input
+                          id="quiet-start"
+                          v-model="alertQuietStart"
+                          type="time"
+                          :disabled="!alertQuietHoursEnabled"
+                        />
                       </div>
                       <div class="space-y-1">
-                        <label for="quiet-end" class="text-xs text-[#5e7696]">Bis</label>
-                        <Input id="quiet-end" v-model="alertQuietEnd" type="time" :disabled="!alertQuietHoursEnabled" />
+                        <label for="quiet-end" class="text-xs text-[#5e7696]"
+                          >Bis</label
+                        >
+                        <Input
+                          id="quiet-end"
+                          v-model="alertQuietEnd"
+                          type="time"
+                          :disabled="!alertQuietHoursEnabled"
+                        />
                       </div>
                       <div class="space-y-1">
-                        <label for="quiet-zone" class="text-xs text-[#5e7696]">Zeitzone</label>
+                        <label for="quiet-zone" class="text-xs text-[#5e7696]"
+                          >Zeitzone</label
+                        >
                         <Input
                           id="quiet-zone"
                           v-model="alertQuietTimezone"
@@ -740,7 +852,8 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
               </div>
 
               <p class="mt-3 text-xs text-[#68809f]">
-                Wir senden maximal {{ maxNotificationsHint }} Benachrichtigungen pro Tag.
+                Wir senden maximal {{ maxNotificationsHint }} Benachrichtigungen
+                pro Tag.
               </p>
 
               <div class="mt-4 flex flex-wrap items-center gap-2">
@@ -750,7 +863,11 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
                   @click="handleUpsertAlert"
                 >
                   <BellRing class="size-4" />
-                  {{ selectedAlertId ? 'Suchauftrag aktualisieren' : 'Suchauftrag erstellen' }}
+                  {{
+                    selectedAlertId
+                      ? 'Suchauftrag aktualisieren'
+                      : 'Suchauftrag erstellen'
+                  }}
                 </Button>
                 <Button
                   variant="outline"
@@ -773,19 +890,32 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
 
             <section class="rounded-xl border border-[#c8d2de] bg-white p-4">
               <div class="mb-3 flex items-center justify-between gap-2">
-                <h3 class="text-base font-semibold text-[#22324a]">Bestehende Suchauftraege</h3>
-                <Badge variant="secondary" class="border border-[#d4deea] bg-[#edf3fb] text-[#35507a]">
+                <h3 class="text-base font-semibold text-[#22324a]">
+                  Bestehende Suchauftraege
+                </h3>
+                <Badge
+                  variant="secondary"
+                  class="border border-[#d4deea] bg-[#edf3fb] text-[#35507a]"
+                >
                   {{ searchAlerts.length }}
                 </Badge>
               </div>
 
-              <div v-if="searchAlerts.length === 0" class="rounded-lg border border-dashed border-[#cad6e6] p-4 text-sm text-[#6d829f]">
+              <div
+                v-if="searchAlerts.length === 0"
+                class="rounded-lg border border-dashed border-[#cad6e6] p-4 text-sm text-[#6d829f]"
+              >
                 Noch keine Suchauftraege vorhanden.
               </div>
 
-              <div v-else class="overflow-x-auto rounded-lg border border-[#d4deea]">
+              <div
+                v-else
+                class="overflow-x-auto rounded-lg border border-[#d4deea]"
+              >
                 <table class="w-full min-w-[720px] text-left text-sm">
-                  <thead class="bg-[#f4f7fb] text-xs uppercase tracking-wide text-[#5f7594]">
+                  <thead
+                    class="bg-[#f4f7fb] text-xs uppercase tracking-wide text-[#5f7594]"
+                  >
                     <tr>
                       <th class="px-3 py-2">Name</th>
                       <th class="px-3 py-2">Frequenz</th>
@@ -800,21 +930,42 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
                       v-for="alert in searchAlerts"
                       :key="alert.id"
                       class="border-t border-[#e0e7f0]"
-                      :class="selectedAlertId === alert.id ? 'bg-[#edf4ff]' : 'bg-white'"
+                      :class="
+                        selectedAlertId === alert.id
+                          ? 'bg-[#edf4ff]'
+                          : 'bg-white'
+                      "
                     >
                       <td class="px-3 py-2 font-medium text-[#22324a]">
-                        {{ savedSearches.find((item) => item.id === alert.savedSearchId)?.name ?? 'Unbenannte Suche' }}
+                        {{
+                          savedSearches.find(
+                            (item) => item.id === alert.savedSearchId
+                          )?.name ?? 'Unbenannte Suche'
+                        }}
                       </td>
-                      <td class="px-3 py-2 text-[#4c6382]">{{ formatFrequency(alert.frequency) }}</td>
-                      <td class="px-3 py-2 text-[#4c6382]">{{ formatChannel(alert.channel) }}</td>
-                      <td class="px-3 py-2 text-[#4c6382]">{{ formatAbsoluteDate(alert.lastNotifiedAt) }}</td>
+                      <td class="px-3 py-2 text-[#4c6382]">
+                        {{ formatFrequency(alert.frequency) }}
+                      </td>
+                      <td class="px-3 py-2 text-[#4c6382]">
+                        {{ formatChannel(alert.channel) }}
+                      </td>
+                      <td class="px-3 py-2 text-[#4c6382]">
+                        {{ formatAbsoluteDate(alert.lastNotifiedAt) }}
+                      </td>
                       <td class="px-3 py-2">
-                        <Badge :variant="alert.isActive ? 'default' : 'secondary'">
+                        <Badge
+                          :variant="alert.isActive ? 'default' : 'secondary'"
+                        >
                           {{ alert.isActive ? 'Aktiv' : 'Inaktiv' }}
                         </Badge>
                       </td>
                       <td class="px-3 py-2">
-                        <Button variant="ghost" size="sm" @click="handleSelectAlert(alert)">Bearbeiten</Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          @click="handleSelectAlert(alert)"
+                          >Bearbeiten</Button
+                        >
                       </td>
                     </tr>
                   </tbody>
@@ -825,7 +976,9 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
 
           <TabsContent value="saved" class="space-y-4">
             <section class="rounded-xl border border-[#c8d2de] bg-white p-4">
-              <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div
+                class="mb-3 flex flex-wrap items-center justify-between gap-2"
+              >
                 <Button
                   variant="outline"
                   class="border-[#d4deea] bg-[#f7fbff] text-[#2f64c6]"
@@ -847,7 +1000,10 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
                 </Select>
               </div>
 
-              <div v-if="sortedSavedSearches.length === 0" class="rounded-lg border border-dashed border-[#cad6e6] p-4 text-sm text-[#6d829f]">
+              <div
+                v-if="sortedSavedSearches.length === 0"
+                class="rounded-lg border border-dashed border-[#cad6e6] p-4 text-sm text-[#6d829f]"
+              >
                 Noch keine gespeicherten Suchen vorhanden.
               </div>
 
@@ -860,10 +1016,17 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
                   <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0 flex-1 space-y-2">
                       <Input
-                        :model-value="renameDrafts[savedSearch.id] ?? savedSearch.name"
+                        :model-value="
+                          renameDrafts[savedSearch.id] ?? savedSearch.name
+                        "
                         class="h-8 border-[#d4deea]"
-                        @update:model-value="(value) => updateRenameDraft(savedSearch.id, String(value))"
-                        @keydown.enter.prevent="handleRenameSavedSearch(savedSearch)"
+                        @update:model-value="
+                          (value) =>
+                            updateRenameDraft(savedSearch.id, String(value))
+                        "
+                        @keydown.enter.prevent="
+                          handleRenameSavedSearch(savedSearch)
+                        "
                       />
 
                       <div class="flex flex-wrap gap-1.5">
@@ -883,14 +1046,30 @@ async function handleDeleteSavedSearch(savedSearch: SavedSearch): Promise<void> 
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
-                      <Button size="sm" @click="handleApplySavedSearch(savedSearch)">Anwenden</Button>
-                      <Button size="sm" variant="outline" @click="handleActivateAlert(savedSearch)">
+                      <Button
+                        size="sm"
+                        @click="handleApplySavedSearch(savedSearch)"
+                        >Anwenden</Button
+                      >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        @click="handleActivateAlert(savedSearch)"
+                      >
                         Als Suchauftrag aktivieren
                       </Button>
-                      <Button size="sm" variant="ghost" @click="handleRenameSavedSearch(savedSearch)">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        @click="handleRenameSavedSearch(savedSearch)"
+                      >
                         Umbenennen
                       </Button>
-                      <Button size="sm" variant="destructive" @click="handleDeleteSavedSearch(savedSearch)">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        @click="handleDeleteSavedSearch(savedSearch)"
+                      >
                         Loeschen
                       </Button>
                     </div>

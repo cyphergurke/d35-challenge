@@ -92,7 +92,11 @@ const selectedPageSize = computed<string>({
       >
         <Heart
           class="size-4"
-          :class="favoritesCount > 0 ? 'fill-[#ef4f6b] text-[#ef4f6b]' : 'text-[#6b7d95]'"
+          :class="
+            favoritesCount > 0
+              ? 'fill-[#ef4f6b] text-[#ef4f6b]'
+              : 'text-[#6b7d95]'
+          "
         />
         <span>{{ favoritesCount }}</span>
       </button>

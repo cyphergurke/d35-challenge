@@ -18,13 +18,17 @@ export interface WidgetAdapter {
   registerElement: (tagName?: string) => void
 }
 
-export function createWidgetAdapter<Map extends AttributeToPropMap = Record<never, never>>(
-  config: CreateWidgetAdapterConfig<Map>
-): WidgetAdapter {
+export function createWidgetAdapter<
+  Map extends AttributeToPropMap = Record<never, never>
+>(config: CreateWidgetAdapterConfig<Map>): WidgetAdapter {
   const attributeToPropMap = (config.attributeToPropMap ?? {}) as Map
-  const observedAttributes = Object.keys(attributeToPropMap) as Array<keyof Map & string>
+  const observedAttributes = Object.keys(attributeToPropMap) as Array<
+    keyof Map & string
+  >
   const knownAttributes = new Set<string>(observedAttributes)
-  const booleanAttributes = new Set<string>((config.booleanAttributes ?? []) as string[])
+  const booleanAttributes = new Set<string>(
+    (config.booleanAttributes ?? []) as string[]
+  )
   const mountPointClassName = config.mountPointClassName ?? 'widget-root'
 
   type PropName = Map[keyof Map]
@@ -37,7 +41,10 @@ export function createWidgetAdapter<Map extends AttributeToPropMap = Record<neve
     return knownAttributes.has(name)
   }
 
-  function toPropValue(attributeName: keyof Map & string, value: string): string | boolean {
+  function toPropValue(
+    attributeName: keyof Map & string,
+    value: string
+  ): string | boolean {
     if (booleanAttributes.has(attributeName)) {
       return value !== 'false'
     }
@@ -119,8 +126,17 @@ export function createWidgetAdapter<Map extends AttributeToPropMap = Record<neve
       this.unmountInstance()
     }
 
-    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
-      if (oldValue === newValue || !isKnownAttribute(name) || !this.isConnected || !this.app) {
+    attributeChangedCallback(
+      name: string,
+      oldValue: string | null,
+      newValue: string | null
+    ): void {
+      if (
+        oldValue === newValue ||
+        !isKnownAttribute(name) ||
+        !this.isConnected ||
+        !this.app
+      ) {
         return
       }
 

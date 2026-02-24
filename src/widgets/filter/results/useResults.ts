@@ -66,8 +66,10 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
     const displacementFrom = parseNumber(state.displacementFrom)
     const displacementTo = parseNumber(state.displacementTo)
     const seats = parseNumber(state.seats)
-    const selectedMarkeSet = state.marke.length > 0 ? new Set(state.marke) : null
-    const selectedModelSet = state.model.length > 0 ? new Set(state.model) : null
+    const selectedMarkeSet =
+      state.marke.length > 0 ? new Set(state.marke) : null
+    const selectedModelSet =
+      state.model.length > 0 ? new Set(state.model) : null
     const selectedBodyTypeSet =
       state.bodyType.length > 0 ? new Set(state.bodyType) : null
     const selectedFuelSet = state.fuel.length > 0 ? new Set(state.fuel) : null
@@ -102,7 +104,9 @@ export function useResults(params: UseResultsParams): UseResultsReturn {
 
       if (
         selectedFinancingSet &&
-        !item.financingOptions.some((option) => selectedFinancingSet.has(option))
+        !item.financingOptions.some((option) =>
+          selectedFinancingSet.has(option)
+        )
       ) {
         return false
       }

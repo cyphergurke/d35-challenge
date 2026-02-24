@@ -15,7 +15,9 @@ export function sanitizeNumericInput(value: string | number): string {
 }
 
 export function isAllowedPriceKey(event: KeyboardEvent): boolean {
-  const isShortcut = (event.ctrlKey || event.metaKey) && SHORTCUT_KEYS.has(event.key.toLowerCase())
+  const isShortcut =
+    (event.ctrlKey || event.metaKey) &&
+    SHORTCUT_KEYS.has(event.key.toLowerCase())
   if (ALLOWED_NAVIGATION_KEYS.has(event.key) || isShortcut) {
     return true
   }

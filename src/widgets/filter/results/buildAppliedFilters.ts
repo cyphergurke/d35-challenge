@@ -1,4 +1,9 @@
-import type { AppliedFilter, AppliedFilterKind, FilterDefinitionId, FilterState } from '@/widgets/filter/types/filters'
+import type {
+  AppliedFilter,
+  AppliedFilterKind,
+  FilterDefinitionId,
+  FilterState
+} from '@/widgets/filter/types/filters'
 
 interface SingleFieldConfig {
   definitionId: FilterDefinitionId
@@ -75,17 +80,43 @@ function pushRangeFilter(
   })
 }
 
-export function buildAppliedFiltersFromState(state: FilterState): AppliedFilter[] {
+export function buildAppliedFiltersFromState(
+  state: FilterState
+): AppliedFilter[] {
   const filters: AppliedFilter[] = []
 
-  pushSingleFilter(filters, { definitionId: 'category', kind: 'category', label: 'Kategorie' }, state.category)
-  pushSingleFilter(filters, { definitionId: 'location', kind: 'location', label: 'Standort' }, state.location)
-  pushSingleFilter(filters, { definitionId: 'radius', kind: 'radius', label: 'Radius' }, state.radius)
+  pushSingleFilter(
+    filters,
+    { definitionId: 'category', kind: 'category', label: 'Kategorie' },
+    state.category
+  )
+  pushSingleFilter(
+    filters,
+    { definitionId: 'location', kind: 'location', label: 'Standort' },
+    state.location
+  )
+  pushSingleFilter(
+    filters,
+    { definitionId: 'radius', kind: 'radius', label: 'Radius' },
+    state.radius
+  )
   pushMultiFilters(filters, 'marke', 'marke', 'Marke', state.marke)
   pushMultiFilters(filters, 'model', 'model', 'Model', state.model)
-  pushMultiFilters(filters, 'bodyType', 'bodyType', 'Karosserietyp', state.bodyType)
+  pushMultiFilters(
+    filters,
+    'bodyType',
+    'bodyType',
+    'Karosserietyp',
+    state.bodyType
+  )
   pushMultiFilters(filters, 'fuel', 'fuel', 'Kraftstoff', state.fuel)
-  pushMultiFilters(filters, 'financing', 'financing', 'Finanzierung', state.financing)
+  pushMultiFilters(
+    filters,
+    'financing',
+    'financing',
+    'Finanzierung',
+    state.financing
+  )
   pushSingleFilter(
     filters,
     { definitionId: 'transmission', kind: 'transmission', label: 'Schaltung' },
@@ -142,7 +173,7 @@ export function buildAppliedFiltersFromState(state: FilterState): AppliedFilter[
   if (minPrice) {
     filters.push({
       id: `budget-min-${minPrice}`,
-      label: `Min: ${minPrice} EUR`,
+      label: `Min: ${minPrice} €`,
       kind: 'priceMin',
       value: minPrice,
       definitionId: 'budget'
@@ -153,15 +184,23 @@ export function buildAppliedFiltersFromState(state: FilterState): AppliedFilter[
   if (maxPrice) {
     filters.push({
       id: `budget-max-${maxPrice}`,
-      label: `Max: ${maxPrice} EUR`,
+      label: `Max: ${maxPrice} €`,
       kind: 'priceMax',
       value: maxPrice,
       definitionId: 'budget'
     })
   }
 
-  pushSingleFilter(filters, { definitionId: 'doors', kind: 'doors', label: 'Tueren' }, state.doors)
-  pushSingleFilter(filters, { definitionId: 'seats', kind: 'seats', label: 'Sitze' }, state.seats)
+  pushSingleFilter(
+    filters,
+    { definitionId: 'doors', kind: 'doors', label: 'Tueren' },
+    state.doors
+  )
+  pushSingleFilter(
+    filters,
+    { definitionId: 'seats', kind: 'seats', label: 'Sitze' },
+    state.seats
+  )
   pushMultiFilters(filters, 'extras', 'extra', 'Extra', state.extras)
 
   return filters

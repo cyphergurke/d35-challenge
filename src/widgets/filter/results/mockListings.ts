@@ -239,12 +239,20 @@ function createListing(index: number): CarListing {
   const year = 2017 + (index % 9)
   const kilometers = 5000 + modelCycle * 11000 + (index % 4) * 8000
   const price = blueprint.basePrice + modelCycle * 1450 + (2026 - year) * 420
-  const monthlyRate = blueprint.monthlyBase ? blueprint.monthlyBase + modelCycle * 14 : undefined
+  const monthlyRate = blueprint.monthlyBase
+    ? blueprint.monthlyBase + modelCycle * 14
+    : undefined
   const has360 = index % 3 === 0
-  const consumption = blueprint.fuel === 'Elektro' ? undefined : (4.6 + (index % 6) * 0.4).toFixed(1)
-  const emissions = blueprint.fuel === 'Elektro' ? undefined : `${98 + (index % 8) * 9} g/km`
+  const consumption =
+    blueprint.fuel === 'Elektro'
+      ? undefined
+      : (4.6 + (index % 6) * 0.4).toFixed(1)
+  const emissions =
+    blueprint.fuel === 'Elektro' ? undefined : `${98 + (index % 8) * 9} g/km`
   const relevanceScore = 100 - (index % 35)
-  const createdAt = new Date(Date.UTC(2024 + (index % 2), index % 12, (index % 27) + 1)).toISOString()
+  const createdAt = new Date(
+    Date.UTC(2024 + (index % 2), index % 12, (index % 27) + 1)
+  ).toISOString()
 
   return {
     id: `car-${index + 1}`,
@@ -278,6 +286,7 @@ function createListing(index: number): CarListing {
   }
 }
 
-export const mockListings: readonly CarListing[] = Array.from({ length: 60 }, (_, index) =>
-  createListing(index)
+export const mockListings: readonly CarListing[] = Array.from(
+  { length: 60 },
+  (_, index) => createListing(index)
 )

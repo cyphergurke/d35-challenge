@@ -2,7 +2,11 @@
 import { computed } from 'vue'
 import CarCard from '@/widgets/filter/results/CarCard.vue'
 import PromoCard from '@/widgets/filter/results/PromoCard.vue'
-import type { CarListing, CarOfferCardModel, PromoTile } from '@/widgets/filter/results/types'
+import type {
+  CarListing,
+  CarOfferCardModel,
+  PromoTile
+} from '@/widgets/filter/results/types'
 
 interface Props {
   listings: CarListing[]
@@ -40,7 +44,8 @@ const promoTemplates: readonly PromoTile[] = [
   {
     id: 'promo-financing',
     title: 'Flexible Finanzierung',
-    description: 'Vergleiche Leasing, Kredit und Abo direkt neben den Suchergebnissen.',
+    description:
+      'Vergleiche Leasing, Kredit und Abo direkt neben den Suchergebnissen.',
     ctaLabel: 'Finanzierung ansehen'
   }
 ]
@@ -138,10 +143,7 @@ function handleOpenDetails(listingId: string): void {
         @toggle-favorite="handleToggleFavorite"
         @open-details="handleOpenDetails"
       />
-      <PromoCard
-        v-else
-        :promo="entry.promo"
-      />
+      <PromoCard v-else :promo="entry.promo" />
     </template>
   </div>
 </template>

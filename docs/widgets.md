@@ -81,10 +81,7 @@ export { MyWidget }
 Wichtig: Das Modul des Widgets muss geladen werden, damit das Custom Element registriert wird.
 
 ```html
-<my-widget
-  some-value="abc"
-  is-enabled="true"
-></my-widget>
+<my-widget some-value="abc" is-enabled="true"></my-widget>
 
 <script type="module" src="/src/widgets/my-widget/index.ts"></script>
 ```

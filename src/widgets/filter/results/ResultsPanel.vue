@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -10,7 +10,10 @@ import ResultsToolbar from '@/widgets/filter/results/ResultsToolbar.vue'
 import { buildAppliedFiltersFromState } from '@/widgets/filter/results/buildAppliedFilters'
 import { cloneFilterState } from '@/widgets/filter/results/searchModels'
 import { useResults } from '@/widgets/filter/results/useResults'
-import { RESULT_SORT_OPTIONS, type SortKey } from '@/widgets/filter/results/types'
+import {
+  RESULT_SORT_OPTIONS,
+  type SortKey
+} from '@/widgets/filter/results/types'
 import type { AppliedFilter, FilterState } from '@/widgets/filter/types/filters'
 
 interface Props {
@@ -26,7 +29,10 @@ const emit = defineEmits<{
   (event: 'page-change', page: number): void
   (event: 'sort-change', sort: SortKey): void
   (event: 'favorite-change', count: number): void
-  (event: 'apply-saved-search', payload: { filters: FilterState; sortKey: SortKey }): void
+  (
+    event: 'apply-saved-search',
+    payload: { filters: FilterState; sortKey: SortKey }
+  ): void
 }>()
 
 const sortKey = ref<SortKey>('relevance')
@@ -36,7 +42,8 @@ const favorites = ref<Set<string>>(new Set())
 const isSearchDialogOpen = ref(false)
 const pageSizeOptions = [6, 9, 12, 15, 18, 21, 24] as const
 const defaultPageSizeOption = pageSizeOptions[0]
-const maxPageSizeOption = pageSizeOptions[pageSizeOptions.length - 1] ?? defaultPageSizeOption
+const maxPageSizeOption =
+  pageSizeOptions[pageSizeOptions.length - 1] ?? defaultPageSizeOption
 const isLoading = ref(false)
 const loadingDelayMs = 700
 let loadingTimer: number | null = null
@@ -48,6 +55,7 @@ interface SearchDialogExposed {
 }
 
 const searchDialogRef = ref<SearchDialogExposed | null>(null)
+const filterStateRef = toRef(props, 'filterState')
 
 const {
   pagedItems,
@@ -59,7 +67,7 @@ const {
   isFavorite,
   toggleFavorite
 } = useResults({
-  filterState: props.filterState,
+  filterState: filterStateRef,
   sortKey,
   page,
   pageSize,
@@ -90,7 +98,9 @@ function readFavoritesFromStorage(): Set<string> {
       return new Set()
     }
 
-    const values = parsed.filter((value): value is string => typeof value === 'string')
+    const values = parsed.filter(
+      (value): value is string => typeof value === 'string'
+    )
     return new Set(values)
   } catch {
     return new Set()
@@ -117,7 +127,10 @@ function openSearchAlertDialog(): void {
   searchDialogRef.value?.openAlertsTab()
 }
 
-function handleApplySavedSearch(payload: { filters: FilterState; sortKey: SortKey }): void {
+function handleApplySavedSearch(payload: {
+  filters: FilterState
+  sortKey: SortKey
+}): void {
   sortKey.value = payload.sortKey
   page.value = 1
 
@@ -141,7 +154,9 @@ const resultRangeText = computed(() => {
   return `${start}-${end} von ${totalCount.value} Ergebnissen`
 })
 
-const visiblePages = computed<Array<number | 'ellipsis-left' | 'ellipsis-right'>>(() => {
+const visiblePages = computed<
+  Array<number | 'ellipsis-left' | 'ellipsis-right'>
+>(() => {
   if (totalPages.value <= 7) {
     return Array.from({ length: totalPages.value }, (_, index) => index + 1)
   }
@@ -191,8 +206,8 @@ watch(pageSize, (value) => {
     const fallback =
       value <= 0
         ? defaultPageSizeOption
-        : pageSizeOptions.find((option) => option >= value) ??
-          maxPageSizeOption
+        : (pageSizeOptions.find((option) => option >= value) ??
+          maxPageSizeOption)
     pageSize.value = fallback
     return
   }
@@ -287,7 +302,9 @@ function nextPage(): void {
     </div>
 
     <div class="rounded-2xl border border-[#c8d2de] bg-[#f7f9fc] p-3">
-      <div class="mb-3 flex items-center justify-between text-xs text-[#6d809b]">
+      <div
+        class="mb-3 flex items-center justify-between text-xs text-[#6d809b]"
+      >
         <p>{{ resultRangeText }}</p>
         <p>Seite {{ currentPage }} / {{ Math.max(totalPages, 1) }}</p>
       </div>
@@ -296,7 +313,9 @@ function nextPage(): void {
         v-if="isLoading"
         class="flex min-h-[260px] items-center justify-center rounded-xl border border-dashed border-[#c6d4e7] bg-white px-4 text-center text-sm text-[#68809f]"
       >
-        <div class="inline-flex items-center gap-2 rounded-full border border-[#d6dfeb] bg-[#f8fafd] px-3 py-2">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-[#d6dfeb] bg-[#f8fafd] px-3 py-2"
+        >
           <Spinner class="size-4 text-[#5b7396]" />
           <span>Lade Ergebnisse...</span>
         </div>
@@ -330,10 +349,7 @@ function nextPage(): void {
           <ChevronLeft class="size-4" />
         </Button>
 
-        <template
-          v-for="entry in visiblePages"
-          :key="`page-${entry}`"
-        >
+        <template v-for="entry in visiblePages" :key="`page-${entry}`">
           <Button
             v-if="typeof entry === 'number'"
             :variant="entry === currentPage ? 'default' : 'ghost'"
@@ -343,12 +359,7 @@ function nextPage(): void {
           >
             {{ entry }}
           </Button>
-          <span
-            v-else
-            class="px-1 text-sm text-[#7990ad]"
-          >
-            ...
-          </span>
+          <span v-else class="px-1 text-sm text-[#7990ad]"> ... </span>
         </template>
 
         <Button
