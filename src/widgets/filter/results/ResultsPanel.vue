@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import AppliedFiltersRow from '@/widgets/filter/results/AppliedFiltersRow.vue'
 import ResultsGrid from '@/widgets/filter/results/ResultsGrid.vue'
+import SearchManagementDialog from '@/widgets/filter/results/SearchManagementDialog.vue'
 import ResultsToolbar from '@/widgets/filter/results/ResultsToolbar.vue'
 import { buildAppliedFiltersFromState } from '@/widgets/filter/results/buildAppliedFilters'
+import { cloneFilterState } from '@/widgets/filter/results/searchModels'
 import { useResults } from '@/widgets/filter/results/useResults'
 import { RESULT_SORT_OPTIONS, type SortKey } from '@/widgets/filter/results/types'
 import type { AppliedFilter, FilterState } from '@/widgets/filter/types/filters'
@@ -24,29 +26,28 @@ const emit = defineEmits<{
   (event: 'page-change', page: number): void
   (event: 'sort-change', sort: SortKey): void
   (event: 'favorite-change', count: number): void
+  (event: 'apply-saved-search', payload: { filters: FilterState; sortKey: SortKey }): void
 }>()
 
 const sortKey = ref<SortKey>('relevance')
 const page = ref(1)
 const pageSize = ref(12)
 const favorites = ref<Set<string>>(new Set())
-const savedSearches = ref<SavedSearchEntry[]>([])
+const isSearchDialogOpen = ref(false)
 const pageSizeOptions = [6, 9, 12, 15, 18, 21, 24] as const
 const defaultPageSizeOption = pageSizeOptions[0]
 const maxPageSizeOption = pageSizeOptions[pageSizeOptions.length - 1] ?? defaultPageSizeOption
 const isLoading = ref(false)
-const loadingDelayMs = 500
+const loadingDelayMs = 700
 let loadingTimer: number | null = null
 const FAVORITES_STORAGE_KEY = 'd35-results-favorites'
-const SAVED_SEARCHES_STORAGE_KEY = 'd35-saved-searches'
-const MAX_SAVED_SEARCHES = 30
 
-interface SavedSearchEntry {
-  id: string
-  createdAt: string
-  query: string
-  appliedFilters: string[]
+interface SearchDialogExposed {
+  openAlertsTab: () => void
+  saveCurrentSearchFromToolbar: () => Promise<void>
 }
+
+const searchDialogRef = ref<SearchDialogExposed | null>(null)
 
 const {
   pagedItems,
@@ -72,61 +73,6 @@ const resolvedAppliedFilters = computed<AppliedFilter[]>(() => {
 
   return buildAppliedFiltersFromState(props.filterState)
 })
-
-function appendSingleParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: string | undefined
-): void {
-  if (!value) {
-    return
-  }
-
-  searchParams.set(key, value)
-}
-
-function appendMultiParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: string[]
-): void {
-  if (value.length === 0) {
-    return
-  }
-
-  searchParams.set(key, value.join(','))
-}
-
-function buildSearchQueryFromState(nextState: FilterState): string {
-  const searchParams = new URLSearchParams()
-
-  appendSingleParam(searchParams, 'category', nextState.category)
-  appendSingleParam(searchParams, 'location', nextState.location)
-  appendSingleParam(searchParams, 'radius', nextState.radius)
-  appendMultiParam(searchParams, 'marke', nextState.marke)
-  appendMultiParam(searchParams, 'model', nextState.model)
-  appendMultiParam(searchParams, 'bodyType', nextState.bodyType)
-  appendMultiParam(searchParams, 'fuel', nextState.fuel)
-  appendMultiParam(searchParams, 'financing', nextState.financing)
-  appendSingleParam(searchParams, 'transmission', nextState.transmission)
-  appendSingleParam(searchParams, 'condition', nextState.condition)
-  appendSingleParam(searchParams, 'yearFrom', nextState.yearFrom)
-  appendSingleParam(searchParams, 'yearTo', nextState.yearTo)
-  appendSingleParam(searchParams, 'kilometerFrom', nextState.kilometerFrom)
-  appendSingleParam(searchParams, 'kilometerTo', nextState.kilometerTo)
-  appendSingleParam(searchParams, 'powerFrom', nextState.powerFrom)
-  appendSingleParam(searchParams, 'powerTo', nextState.powerTo)
-  appendSingleParam(searchParams, 'displacementFrom', nextState.displacementFrom)
-  appendSingleParam(searchParams, 'displacementTo', nextState.displacementTo)
-  appendSingleParam(searchParams, 'minPrice', nextState.minPrice)
-  appendSingleParam(searchParams, 'maxPrice', nextState.maxPrice)
-  appendSingleParam(searchParams, 'doors', nextState.doors)
-  appendSingleParam(searchParams, 'seats', nextState.seats)
-  appendMultiParam(searchParams, 'extras', nextState.extras)
-  appendSingleParam(searchParams, 'extrasSearch', nextState.extrasSearch)
-
-  return searchParams.toString()
-}
 
 function readFavoritesFromStorage(): Set<string> {
   if (typeof window === 'undefined') {
@@ -162,77 +108,27 @@ function persistFavoritesToStorage(nextFavorites: Set<string>): void {
   )
 }
 
-function isSavedSearchEntry(value: unknown): value is SavedSearchEntry {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.id === 'string' &&
-    typeof record.createdAt === 'string' &&
-    typeof record.query === 'string' &&
-    Array.isArray(record.appliedFilters) &&
-    record.appliedFilters.every((entry) => typeof entry === 'string')
-  )
+async function handleSaveSearch(): Promise<void> {
+  await searchDialogRef.value?.saveCurrentSearchFromToolbar()
 }
 
-function readSavedSearchesFromStorage(): SavedSearchEntry[] {
-  if (typeof window === 'undefined') {
-    return []
-  }
-
-  const serialized = window.localStorage.getItem(SAVED_SEARCHES_STORAGE_KEY)
-  if (!serialized) {
-    return []
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(serialized)
-    if (!Array.isArray(parsed)) {
-      return []
-    }
-
-    return parsed.filter(isSavedSearchEntry)
-  } catch {
-    return []
-  }
+function openSearchAlertDialog(): void {
+  isSearchDialogOpen.value = true
+  searchDialogRef.value?.openAlertsTab()
 }
 
-function persistSavedSearchesToStorage(entries: SavedSearchEntry[]): void {
-  if (typeof window === 'undefined') {
-    return
-  }
+function handleApplySavedSearch(payload: { filters: FilterState; sortKey: SortKey }): void {
+  sortKey.value = payload.sortKey
+  page.value = 1
 
-  window.localStorage.setItem(SAVED_SEARCHES_STORAGE_KEY, JSON.stringify(entries))
-}
-
-function getSavedSearchId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-
-  return `saved-search-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-function handleSaveSearch(): void {
-  const query = buildSearchQueryFromState(props.filterState)
-  const nextEntry: SavedSearchEntry = {
-    id: getSavedSearchId(),
-    createdAt: new Date().toISOString(),
-    query: query ? `&${query}` : '',
-    appliedFilters: resolvedAppliedFilters.value.map((filter) => filter.label)
-  }
-
-  const withoutDuplicateQuery = savedSearches.value.filter(
-    (entry) => entry.query !== nextEntry.query
-  )
-  savedSearches.value = [nextEntry, ...withoutDuplicateQuery].slice(0, MAX_SAVED_SEARCHES)
+  emit('apply-saved-search', {
+    filters: cloneFilterState(payload.filters),
+    sortKey: payload.sortKey
+  })
 }
 
 if (typeof window !== 'undefined') {
   favorites.value = readFavoritesFromStorage()
-  savedSearches.value = readSavedSearchesFromStorage()
 }
 
 const resultRangeText = computed(() => {
@@ -325,14 +221,6 @@ watch(favorites, (value) => {
 })
 
 watch(
-  savedSearches,
-  (value) => {
-    persistSavedSearchesToStorage(value)
-  },
-  { deep: true }
-)
-
-watch(
   [() => props.filterState, sortKey, page, pageSize],
   () => {
     if (loadingTimer !== null) {
@@ -379,21 +267,24 @@ function nextPage(): void {
 
 <template>
   <section class="space-y-3">
-    <ResultsToolbar
-      v-model:sort-key="sortKey"
-      v-model:page-size="pageSize"
-      :sort-options="RESULT_SORT_OPTIONS"
-      :favorites-count="favoritesCount"
-      :total-count="totalCount"
-      :page-size-options="pageSizeOptions"
-    />
+    <div class="rounded-2xl border border-[#c8d2de] bg-white p-3">
+      <ResultsToolbar
+        v-model:sort-key="sortKey"
+        v-model:page-size="pageSize"
+        :sort-options="RESULT_SORT_OPTIONS"
+        :favorites-count="favoritesCount"
+        :total-count="totalCount"
+        :page-size-options="pageSizeOptions"
+        @open-search-alert="openSearchAlertDialog"
+        @save-search="handleSaveSearch"
+      />
 
-    <AppliedFiltersRow
-      :applied-filters="resolvedAppliedFilters"
-      :on-clear-all="onClearAll"
-      :on-remove-filter="onRemoveFilter"
-      :on-save-search="handleSaveSearch"
-    />
+      <AppliedFiltersRow
+        :applied-filters="resolvedAppliedFilters"
+        :on-clear-all="onClearAll"
+        :on-remove-filter="onRemoveFilter"
+      />
+    </div>
 
     <div class="rounded-2xl border border-[#c8d2de] bg-[#f7f9fc] p-3">
       <div class="mb-3 flex items-center justify-between text-xs text-[#6d809b]">
@@ -471,5 +362,13 @@ function nextPage(): void {
         </Button>
       </div>
     </div>
+
+    <SearchManagementDialog
+      ref="searchDialogRef"
+      v-model:open="isSearchDialogOpen"
+      :current-filters="filterState"
+      :current-sort-key="sortKey"
+      @apply-saved-search="handleApplySavedSearch"
+    />
   </section>
 </template>

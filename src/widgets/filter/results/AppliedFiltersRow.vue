@@ -8,35 +8,24 @@ interface Props {
   appliedFilters: AppliedFilter[]
   onClearAll: () => void
   onRemoveFilter: (filter: AppliedFilter) => void
-  onSaveSearch: () => void
 }
 
 defineProps<Props>()
 </script>
 
 <template>
-  <div class="space-y-2 rounded-2xl border border-[#c8d2de] bg-white p-3">
+  <div class="space-y-2 border-t border-[#d9e2ef] pt-2">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div class="text-sm font-semibold text-[#2a3342]">Aktive Filter</div>
-      <div class="flex items-center gap-1">
-        <Button
-          v-if="appliedFilters.length > 0"
-          variant="ghost"
-          size="sm"
-          class="h-8 rounded-lg text-xs text-[#31435d] hover:bg-[#edf2f8]"
-          @click="onClearAll()"
-        >
-          Alle loeschen
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          class="h-8 rounded-lg border-[#d0dae7] bg-[#f8faff] text-xs text-[#355b9a]"
-          @click="onSaveSearch()"
-        >
-          Suche speichern
-        </Button>
-      </div>
+      <Button
+        v-if="appliedFilters.length > 0"
+        variant="ghost"
+        size="sm"
+        class="h-8 rounded-lg text-xs text-[#31435d] hover:bg-[#edf2f8]"
+        @click="onClearAll()"
+      >
+        Alle loeschen
+      </Button>
     </div>
 
     <div

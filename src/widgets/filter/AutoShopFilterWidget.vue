@@ -195,7 +195,9 @@ const extrasSummary = computed(() => {
   return `${doorsLabel} | ${seatsLabel} | ${state.extras.length} Extras gewaehlt`
 })
 
-const isAiSearchDisabled = computed(() => aiSearchQuery.value.trim().length === 0)
+const isAiSearchDisabled = computed(
+  () => aiSearchQuery.value.trim().length === 0
+)
 
 interface FiltersAppliedDetail {
   query: string
@@ -204,15 +206,9 @@ interface FiltersAppliedDetail {
   state: FilterState
 }
 
-const FILTER_QUERY_PARAM_KEYS = [
-  'category',
+const SINGLE_OPTIONAL_FILTER_KEYS = [
   'location',
   'radius',
-  'marke',
-  'model',
-  'bodyType',
-  'fuel',
-  'financing',
   'transmission',
   'condition',
   'yearFrom',
@@ -223,13 +219,35 @@ const FILTER_QUERY_PARAM_KEYS = [
   'powerTo',
   'displacementFrom',
   'displacementTo',
+  'doors',
+  'seats'
+] as const
+
+const SINGLE_REQUIRED_FILTER_KEYS = [
+  'category',
   'minPrice',
   'maxPrice',
-  'doors',
-  'seats',
-  'extras',
   'extrasSearch'
 ] as const
+
+const MULTI_FILTER_KEYS = [
+  'marke',
+  'model',
+  'bodyType',
+  'fuel',
+  'financing',
+  'extras'
+] as const
+
+const SINGLE_FILTER_KEYS = [
+  ...SINGLE_REQUIRED_FILTER_KEYS,
+  ...SINGLE_OPTIONAL_FILTER_KEYS
+] as const
+
+const FILTER_QUERY_PARAM_KEYS: readonly string[] = [
+  ...SINGLE_FILTER_KEYS,
+  ...MULTI_FILTER_KEYS
+]
 
 function appendMultiParam(
   searchParams: URLSearchParams,
@@ -258,34 +276,13 @@ function appendSingleParam(
 function buildQueryFromState(nextState: FilterState): string {
   const searchParams = new URLSearchParams()
 
-  appendSingleParam(searchParams, 'category', nextState.category)
-  appendSingleParam(searchParams, 'location', nextState.location)
-  appendSingleParam(searchParams, 'radius', nextState.radius)
-  appendMultiParam(searchParams, 'marke', nextState.marke)
-  appendMultiParam(searchParams, 'model', nextState.model)
-  appendMultiParam(searchParams, 'bodyType', nextState.bodyType)
-  appendMultiParam(searchParams, 'fuel', nextState.fuel)
-  appendMultiParam(searchParams, 'financing', nextState.financing)
-  appendSingleParam(searchParams, 'transmission', nextState.transmission)
-  appendSingleParam(searchParams, 'condition', nextState.condition)
-  appendSingleParam(searchParams, 'yearFrom', nextState.yearFrom)
-  appendSingleParam(searchParams, 'yearTo', nextState.yearTo)
-  appendSingleParam(searchParams, 'kilometerFrom', nextState.kilometerFrom)
-  appendSingleParam(searchParams, 'kilometerTo', nextState.kilometerTo)
-  appendSingleParam(searchParams, 'powerFrom', nextState.powerFrom)
-  appendSingleParam(searchParams, 'powerTo', nextState.powerTo)
-  appendSingleParam(
-    searchParams,
-    'displacementFrom',
-    nextState.displacementFrom
-  )
-  appendSingleParam(searchParams, 'displacementTo', nextState.displacementTo)
-  appendSingleParam(searchParams, 'minPrice', nextState.minPrice)
-  appendSingleParam(searchParams, 'maxPrice', nextState.maxPrice)
-  appendSingleParam(searchParams, 'doors', nextState.doors)
-  appendSingleParam(searchParams, 'seats', nextState.seats)
-  appendMultiParam(searchParams, 'extras', nextState.extras)
-  appendSingleParam(searchParams, 'extrasSearch', nextState.extrasSearch)
+  for (const key of SINGLE_FILTER_KEYS) {
+    appendSingleParam(searchParams, key, nextState[key])
+  }
+
+  for (const key of MULTI_FILTER_KEYS) {
+    appendMultiParam(searchParams, key, nextState[key])
+  }
 
   return searchParams.toString()
 }
@@ -356,6 +353,129 @@ function runAiSearch(): void {
   )
 }
 
+function parseMultiFromParam(value: string | null): string[] {
+  if (!value) {
+    return []
+  }
+
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+}
+
+function parseOptionalParam(searchParams: URLSearchParams, key: string): string | undefined {
+  if (!searchParams.has(key)) {
+    return undefined
+  }
+
+  const rawValue = searchParams.get(key)
+  if (rawValue === null) {
+    return undefined
+  }
+
+  const normalizedValue = rawValue.trim()
+  return normalizedValue.length > 0 ? normalizedValue : undefined
+}
+
+function buildFilterParamsFromUri(): URLSearchParams {
+  const merged = new URLSearchParams()
+
+  if (typeof window === 'undefined') {
+    return merged
+  }
+
+  const currentUrl = new URL(window.location.href)
+
+  for (const key of FILTER_QUERY_PARAM_KEYS) {
+    if (!currentUrl.searchParams.has(key)) {
+      continue
+    }
+
+    merged.set(key, currentUrl.searchParams.get(key) ?? '')
+  }
+
+  const rawCarQueryParams = currentUrl.searchParams.get('carQueryParams')
+  if (!rawCarQueryParams) {
+    return merged
+  }
+
+  const normalizedCarQueryParams = rawCarQueryParams.startsWith('&')
+    ? rawCarQueryParams.slice(1)
+    : rawCarQueryParams
+  const carQuerySearchParams = new URLSearchParams(normalizedCarQueryParams)
+
+  for (const key of FILTER_QUERY_PARAM_KEYS) {
+    if (merged.has(key) || !carQuerySearchParams.has(key)) {
+      continue
+    }
+
+    merged.set(key, carQuerySearchParams.get(key) ?? '')
+  }
+
+  return merged
+}
+
+function hasAnyFilterValue(nextState: FilterState): boolean {
+  for (const key of SINGLE_FILTER_KEYS) {
+    const value = nextState[key]
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return true
+    }
+  }
+
+  for (const key of MULTI_FILTER_KEYS) {
+    if (nextState[key].length > 0) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function parseStateFromUri(): FilterState | null {
+  const uriSearchParams = buildFilterParamsFromUri()
+  if (Array.from(uriSearchParams.keys()).length === 0) {
+    return null
+  }
+
+  const nextState = createSnapshot()
+
+  for (const key of SINGLE_OPTIONAL_FILTER_KEYS) {
+    nextState[key] = parseOptionalParam(uriSearchParams, key)
+  }
+
+  for (const key of SINGLE_REQUIRED_FILTER_KEYS) {
+    nextState[key] = parseOptionalParam(uriSearchParams, key) ?? ''
+  }
+
+  for (const key of MULTI_FILTER_KEYS) {
+    nextState[key] = parseMultiFromParam(uriSearchParams.get(key))
+  }
+
+  return hasAnyFilterValue(nextState) ? nextState : null
+}
+
+function hydrateStateFromUriIfStateIsEmpty(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const currentStateSnapshot = createSnapshot()
+  if (hasAnyFilterValue(currentStateSnapshot)) {
+    return
+  }
+
+  const uriState = parseStateFromUri()
+  if (!uriState) {
+    return
+  }
+
+  applySnapshot(uriState)
+}
+
+hydrateStateFromUriIfStateIsEmpty()
+
 watch(
   () => buildQueryFromState(createSnapshot()),
   (query) => {
@@ -393,34 +513,29 @@ function handleResultsFavoriteChange(count: number): void {
     })
   )
 }
+
+function handleApplySavedSearch(payload: {
+  filters: FilterState
+  sortKey: SortKey
+}): void {
+  applySnapshot(payload.filters)
+  resultsPage.value = 1
+  resultsRefreshToken.value += 1
+
+  props.hostElement?.dispatchEvent(
+    new CustomEvent<{ filters: FilterState; sortKey: SortKey }>(
+      'saved-search-applied',
+      {
+        detail: payload,
+        bubbles: true
+      }
+    )
+  )
+}
 </script>
 
 <template>
   <Card class="border-[#c8d2de] bg-[#f7f9fc] shadow-none">
-    <CardHeader class="flex-row items-center justify-between gap-4 p-4">
-      <div class="flex w-full items-center gap-2">
-        <Input
-          placeholder="Beschreibe dein Traumauto..."
-          class="h-10 w-full bg-white"
-          :model-value="aiSearchQuery"
-          @update:model-value="(value) => (aiSearchQuery = String(value))"
-        />
-        <Button
-          class="h-10 w-fit rounded-xl bg-[#3f82f6] px-5 text-[17px] text-white hover:bg-[#2d72e8] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#3f82f6]"
-          :disabled="isAiSearchDisabled"
-          @click="runAiSearch"
-        >
-          Search
-        </Button>
-      </div>
-      <Button
-        class="h-10 w-fit rounded-xl bg-[#3f82f6] px-5 text-[17px] text-white hover:bg-[#2d72e8]"
-        @click="isGuidedSearchOpen = true"
-      >
-        Start Guided Search
-      </Button>
-    </CardHeader>
-
     <CardContent class="p-4 pt-0">
       <div
         class="mx-auto grid w-full max-w-[1320px] gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start"
@@ -611,8 +726,45 @@ function handleResultsFavoriteChange(count: number): void {
             </Card>
           </CardContent>
         </Card>
+ 
+       
 
-        <div class="min-w-0">
+        <div class="min-w-0 space-y-3">
+          <Card class="border-[#c8d2de] bg-[linear-gradient(135deg,#ffffff_0%,#f3f8ff_100%)] shadow-none">
+            <CardContent class="space-y-3 p-3 sm:p-4">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="space-y-0.5">
+                  <p class="text-sm font-semibold text-[#243349]">Smart Suche</p>
+                  <p class="text-xs text-[#5f7492]">
+                    Beschreibe dein Wunschauto in Alltagssprache und starte die Suche.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  class="h-9 rounded-xl border-[#ced9e8] bg-white text-[#295ea8] hover:bg-[#eef4ff]"
+                  @click="isGuidedSearchOpen = true"
+                >
+                  Start Guided Search
+                </Button>
+              </div>
+
+              <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <Input
+                  placeholder="Beschreibe dein Traumauto..."
+                  class="h-11 w-full border-[#cfdaea] bg-white"
+                  :model-value="aiSearchQuery"
+                  @update:model-value="(value) => (aiSearchQuery = String(value))"
+                />
+                <Button
+                  class="h-11 rounded-xl bg-[#3f82f6] px-6 text-[16px] font-semibold text-white hover:bg-[#2d72e8] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#3f82f6]"
+                  :disabled="isAiSearchDisabled"
+                  @click="runAiSearch"
+                >
+                  Search
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
           <ResultsPanel
             :filter-state="state"
             :applied-filters="appliedFilters"
@@ -621,6 +773,7 @@ function handleResultsFavoriteChange(count: number): void {
             @page-change="handleResultsPageChange"
             @sort-change="handleResultsSortChange"
             @favorite-change="handleResultsFavoriteChange"
+            @apply-saved-search="handleApplySavedSearch"
           />
         </div>
       </div>

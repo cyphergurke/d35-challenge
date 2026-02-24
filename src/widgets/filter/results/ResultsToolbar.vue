@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Heart, Mail, SlidersHorizontal, Star } from 'lucide-vue-next'
+import { Heart, Mail, Save, SlidersHorizontal, Star } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -25,6 +25,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   (event: 'update:sortKey', value: SortKey): void
   (event: 'update:pageSize', value: number): void
+  (event: 'open-search-alert'): void
+  (event: 'save-search'): void
 }>()
 
 const selectedSort = computed<SortKey>({
@@ -46,7 +48,7 @@ const selectedPageSize = computed<string>({
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#c8d2de] bg-white px-3 py-3">
+  <div class="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
     <div class="flex items-center gap-2">
       <div class="flex items-center gap-1 text-xs text-[#6c7f99]">
         <SlidersHorizontal class="size-4" />
@@ -98,9 +100,19 @@ const selectedPageSize = computed<string>({
       <Button
         variant="outline"
         class="h-9 rounded-xl border-[#d4deea] bg-[#f6f8fc] text-[#21324a]"
+        @click="emit('open-search-alert')"
       >
         <Star class="size-4" />
         Suchauftrag
+      </Button>
+
+      <Button
+        variant="ghost"
+        class="h-9 rounded-xl px-3 text-[#2f64c6] hover:bg-[#edf3ff]"
+        @click="emit('save-search')"
+      >
+        <Save class="size-4" />
+        Suche speichern
       </Button>
 
       <Button
