@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, type Component } from 'vue'
-import { CarFront, Caravan, Scooter, Truck, Van } from 'lucide-vue-next'
+import { CarFront, Caravan, Motorbike, Truck, Van } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
 import { Button } from '@/components/ui/button'
 import {
@@ -98,7 +98,7 @@ interface CategoryQuickOption {
 const categoryQuickOptions = computed<CategoryQuickOption[]>(() => {
   const iconByCategoryValue: Record<string, Component> = {
     PKW: CarFront,
-    Motorrad: Scooter,
+    Motorrad: Motorbike,
     Transporter: Van,
     Wohnmobil: Caravan,
     LKW: Truck

@@ -13,6 +13,7 @@ RUN pnpm build
 FROM nginx:1.27-alpine AS runner
 
 COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/demo /usr/share/nginx/html/demo
 
 EXPOSE 80
 
